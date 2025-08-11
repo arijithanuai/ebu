@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Select Location and AdmCode</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .hidden {
+            display: none;
+        }
+        body {
+            font-family: "Open Sans", sans-serif;
+            color: #444444;
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Select Status</h2>
+
+    <!-- Status Dropdown -->
+    <label for="status">Status:</label>
+    <select id="status" name="status">
+        <option value="">-- Select Status --</option>
+        <option value="province">Province</option>
+        <option value="kabupaten">Kabupaten</option>
+    </select>
+
+    <br><br>
+
+    <!-- Province Dropdown -->
+    <div id="province-section" class="hidden">
+        <label for="province">Province:</label>
+        <select id="province" name="province">
+            <option value="">-- Select Province --</option>
+            {% for province in provinces %}
+                <option value="{{ province.id }}" data-pcode="{{ province.pCode }}">{{ province.admNameEng }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <br>
+    <!-- Kabupaten Dropdown -->
+    <div id="kabupaten-section" class="hidden">
+        <label for="kabupaten">Kabupaten:</label>
+        <select id="kabupaten" name="kabupaten">
+            <option value="">-- Select Kabupaten --</option>
+        </select>
+    </div>
+
+    <br><br>
+
+    <!-- AdmCode Display -->
+    <div id="admcode-section" class="hidden">
+        <h1>Enter LG Details</h1>
+        <label>Adm Code:</label>
+        <span id="admcode-display" style="font-weight: bold;"></span>
+    
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}  <!-- This will include phone number and hidden admcode field -->
+
+        <!-- DB File Question -->
+        <p>Do you have a DB file?
+
+        </p>
+        <label>
+            <input type="radio" name="has_db_file" value="yes"> Yes
+        </label>
+        <label>
+            <input type="radio" name="has_db_file" value="no"> No
+        </label>
+
+        <!-- DB Cloud Link Field -->
+        <div id="db-link-section" class="hidden" style="margin-top: 10px;">
+            <label for="db_link">DB Cloud Link:</label>
+            <input type="file" name="db_link" id="db_link" placeholder="Enter DB cloud link">
+        </div>
+
+        <!-- Link Excel -->
+        <div id="link-excel-section" class="hidden" style="margin-top: 10px;">
+            <label for="link_excel">Link excel file</label>
+            <input type="file" name="link_excel" id="link_excel" accept=".xlsx,.xls" />
+            <button type="button" id="upload_link_btn" class=hidden>Upload</button>
+            <div id="link_excel_msg"></div>
+
+            <!-- Map TXT -->
+            <div>
+                <label for="map_txt">Map TXT File</label>
+                <input type="file" name="map_txt" id="map_txt" accept=".txt">
+                <button type="button" id="upload_map_txt" disabled>Upload</button>
+                <span id="map_txt_status"></span>
+            </div>
+
+            <label for="drp">DRP:</label>
+            <input type="file" name="link_drpexcel" id="drp">
+        </div>
+
+
+        <br><br>
+        <button type="submit">Submit</button>
+    </form>
+    </div>
+
+    
+
+    <script>
+        $(document).ready(function () {
+
+            function showAdmCode(admCode) {
+                $('#admcode-section').removeClass('hidden');
+                $('#admcode-display').text(admCode);
+                $('input[name="admcode"]').val(admCode); // set hidden field value
+            }
+
+            function hideAdmCode() {
+                $('#admcode-section').addClass('hidden');
+                $('#admcode-display').text('');
+                $('input[name="admcode"]').val(''); // clear hidden field
+            }
+
+            // On status change
+            $('#status').on('change', function () {
+                const status = $(this).val();
+
+                $('#province').val('');
+                $('#kabupaten').empty().append('<option value="">-- Select Kabupaten --</option>');
+                hideAdmCode();
+                $('#province-section').addClass('hidden');
+                $('#kabupaten-section').addClass('hidden');
+
+                if (status === 'province') {
+                    $('#province-section').removeClass('hidden');
+                } else if (status === 'kabupaten') {
+                    $('#province-section').removeClass('hidden');
+                    $('#kabupaten-section').removeClass('hidden');
+                }
+            });
+
+            // On province change
+            $('#province').on('change', function () {
+                const status = $('#status').val();
+                const selectedOption = $(this).find(':selected');
+                const provinceId = $(this).val();
+                const pCode = selectedOption.data('pcode');
+
+                hideAdmCode();
+
+                if (status === 'province') {
+                    if (pCode) {
+                        const admCode = `${pCode}-00`;
+                        showAdmCode(admCode);
+                    }
+                }
+
+                if (status === 'kabupaten') {
+                    $('#kabupaten').empty().append('<option value="">-- Loading --</option>');
+
+                    if (provinceId) {
+                        $.ajax({
+                            url: "{% url 'get_kabupatens' %}",
+                            data: { 'province_id': provinceId },
+                            success: function (data) {
+                                $('#kabupaten').empty().append('<option value="">-- Select Kabupaten --</option>');
+                                $.each(data, function (index, item) {
+                                    const kCode = item.kCode.toString();
+                                    const lastTwo = kCode.slice(-2).padStart(2, '0');
+                                    const admCode = `${pCode}-${lastTwo}`;
+                                    $('#kabupaten').append(
+                                        `<option value="${item.id}" data-kcode="${item.kCode}" data-admcode="${admCode}">${item.admNameEng}</option>`
+                                    );
+                                });
+                            }
+                        });
+                    }
+                }
+            });
+
+            // On kabupaten change
+            $('#kabupaten').on('change', function () {
+                const selected = $(this).find(':selected');
+                const admCode = selected.data('admcode');
+                if (admCode) {
+                    showAdmCode(admCode);
+                } else {
+                    hideAdmCode();
+                }
+            });
+
+            // DB file radio toggle
+            $('input[name="has_db_file"]').on('change', function () {
+                const selected = $(this).val();
+                if (selected === 'yes') {
+                    $('#db-link-section').removeClass('hidden');
+                    $('#link-excel-section').addClass('hidden');
+                } else {
+                    $('#link-excel-section').removeClass('hidden');
+                    $('#db-link-section').addClass('hidden');
+                    $('#db_link').val('');
+                }
+            });
+
+        });
+        
+
+        // Show upload button when file selected
+        document.getElementById("link_excel").addEventListener("change", function () {
+            document.getElementById("upload_link_btn").style.display = "inline-block";
+        });
+
+        // Upload button click
+        document.getElementById("upload_link_btn").addEventListener("click", function () {
+            let fileInput = document.getElementById("link_excel");
+            if (!fileInput.files.length) {
+                alert("Please select a file first");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("link_excel", fileInput.files[0]);
+            formData.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
+
+            fetch("{% url 'validate_link_excel' %}", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                let msgDiv = document.getElementById("link_excel_msg");
+                msgDiv.innerHTML = data.message;
+                msgDiv.style.color = data.valid ? "green" : "red";
+            })
+            .catch(err => {
+                console.error(err);
+                alert(`Error uploading file: ${err.message || err}`);
+            });
+        });
+
+        $('#mainForm').on('submit', function(e) {
+            e.preventDefault();
+            $.ajax({
+                url: '/save-link-excel/',
+                type: 'POST',
+                success: function(res) {
+                    alert(res.message);
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
