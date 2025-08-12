@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'ebu',
+    "leaflet",
 ]
 
 MIDDLEWARE = [
@@ -74,17 +75,19 @@ WSGI_APPLICATION = 'pkrms_ebu.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-from decouple import config
 import dj_database_url
-
+from decouple import config
 
 DATABASES = {
-     'default': dj_database_url.config(
+    'default': dj_database_url.config(
         default=config('DATABASE_URL'),
         conn_max_age=600,
         ssl_require=True
     )
 }
+
+# Force PostGIS backend
+DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'
 
 # DATABASES = {
 #     'default': {

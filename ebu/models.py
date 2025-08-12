@@ -1,9 +1,13 @@
 from django.db import models
+from django.contrib.gis.db import models
 
 class Province(models.Model):
   
     pCode = models.CharField(max_length=15)  
     admNameEng = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return f"{self.admNameEng} ({self.pCode})"
     
     class Meta: 
         db_table = 'province'
@@ -13,11 +17,13 @@ class Kabupaten(models.Model):
     kCode = models.CharField(max_length=15)  
     admNameEng = models.CharField(max_length=100)
     province= models.ForeignKey(Province,on_delete=models.CASCADE,blank=True)
- 
+    
+    def __str__(self):
+        return f"{self.admNameEng} ({self.kCode})"
+    
     class Meta: 
         db_table = 'kabupaten'
 
-from django.db import models
 
 class User(models.Model):
     admcode = models.CharField(max_length=20, blank=False, null=False) 
@@ -55,15 +61,18 @@ class Link(models.Model):
     aadt = models.IntegerField(null=True, blank=True, db_column='aadt')
     accessStatus = models.CharField(null=True, blank=True, max_length=100, db_column='accessStatus')
 
+    def __str__(self):
+        return f"{self.linkName} ({self.linkNo})"
+    
     class Meta:
         db_table = 'link'
 
 
 
 class Alignment(models.Model):
-    adm_code = models.CharField(max_length=50)
-    link_no = models.ForeignKey(Link, on_delete=models.CASCADE, related_name='alignments')
-    # link_geometry = models.GeometryField(srid=4326)  # You can also use LineStringField if always lines
+    admCode = models.CharField(max_length=50)
+    linkNo = models.ForeignKey(Link, on_delete=models.CASCADE, related_name='alignments')
+    linkGeometry = models.GeometryField(srid=4326)  # You can also use LineStringField if always lines
 
-    def __str__(self):
-        return f"Alignment {self.adm_code} for Link {self.link_no}"
+    class Meta:
+        db_table = 'alignment'

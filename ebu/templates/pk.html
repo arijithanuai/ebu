@@ -88,9 +88,10 @@
             <div>
                 <label for="map_txt">Map TXT File</label>
                 <input type="file" name="map_txt" id="map_txt" accept=".txt">
-                <button type="button" id="upload_map_txt" disabled>Upload</button>
+                <button type="button" id="upload_map_txt" class=hidden>Upload</button>
                 <span id="map_txt_status"></span>
             </div>
+
 
             <label for="drp">DRP:</label>
             <input type="file" name="link_drpexcel" id="drp">
@@ -106,6 +107,20 @@
 
     <script>
         $(document).ready(function () {
+            let excelValidated = false;
+            let txtValidated = false;
+
+            // Initially disable TXT and Submit
+            $("#map_txt").prop("disabled", true);
+            $("button[type=submit]").prop("disabled", true);
+
+            function checkIfReadyToSubmit() {
+                if (excelValidated && txtValidated) {
+                    $("button[type=submit]").prop("disabled", false);
+                } else {
+                    $("button[type=submit]").prop("disabled", true);
+                }
+            }
 
             function showAdmCode(admCode) {
                 $('#admcode-section').removeClass('hidden');
@@ -122,7 +137,6 @@
             // On status change
             $('#status').on('change', function () {
                 const status = $(this).val();
-
                 $('#province').val('');
                 $('#kabupaten').empty().append('<option value="">-- Select Kabupaten --</option>');
                 hideAdmCode();
@@ -143,7 +157,6 @@
                 const selectedOption = $(this).find(':selected');
                 const provinceId = $(this).val();
                 const pCode = selectedOption.data('pcode');
-
                 hideAdmCode();
 
                 if (status === 'province') {
@@ -155,7 +168,6 @@
 
                 if (status === 'kabupaten') {
                     $('#kabupaten').empty().append('<option value="">-- Loading --</option>');
-
                     if (provinceId) {
                         $.ajax({
                             url: "{% url 'get_kabupatens' %}",
@@ -200,51 +212,86 @@
                 }
             });
 
-        });
-        
-
-        // Show upload button when file selected
-        document.getElementById("link_excel").addEventListener("change", function () {
-            document.getElementById("upload_link_btn").style.display = "inline-block";
-        });
-
-        // Upload button click
-        document.getElementById("upload_link_btn").addEventListener("click", function () {
-            let fileInput = document.getElementById("link_excel");
-            if (!fileInput.files.length) {
-                alert("Please select a file first");
-                return;
-            }
-
-            let formData = new FormData();
-            formData.append("link_excel", fileInput.files[0]);
-            formData.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
-
-            fetch("{% url 'validate_link_excel' %}", {
-                method: "POST",
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                let msgDiv = document.getElementById("link_excel_msg");
-                msgDiv.innerHTML = data.message;
-                msgDiv.style.color = data.valid ? "green" : "red";
-            })
-            .catch(err => {
-                console.error(err);
-                alert(`Error uploading file: ${err.message || err}`);
+            // Show upload button when file selected
+            document.getElementById("link_excel").addEventListener("change", function () {
+                document.getElementById("upload_link_btn").style.display = "inline-block";
             });
-        });
+            
+            // Upload Excel validation
+            document.getElementById("upload_link_btn").addEventListener("click", function () {
+                let fileInput = document.getElementById("link_excel");
+                if (!fileInput.files.length) {
+                    alert("Please select a file first");
+                    return;
+                }
 
-        $('#mainForm').on('submit', function(e) {
-            e.preventDefault();
-            $.ajax({
-                url: '/save-link-excel/',
-                type: 'POST',
-                success: function(res) {
-                    alert(res.message);
+                let formData = new FormData();
+                formData.append("link_excel", fileInput.files[0]);
+                formData.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
+
+                fetch("{% url 'validate_link_excel' %}", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    let msgDiv = document.getElementById("link_excel_msg");
+                    msgDiv.innerHTML = data.message;
+                    msgDiv.style.color = data.valid ? "green" : "red";
+
+                    excelValidated = data.valid;
+                    if (data.valid) {
+                        $("#map_txt").prop("disabled", false); // Enable TXT upload
+                    } else {
+                        $("#map_txt").prop("disabled", true);
+                        txtValidated = false;
+                    }
+                    checkIfReadyToSubmit();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert(`Error uploading file: ${err.message || err}`);
+                });
+            });
+
+            // Upload TXT validation
+            document.getElementById("upload_map_txt").addEventListener("click", function () {
+                let fileInput = document.getElementById("map_txt");
+                if (!fileInput.files.length) {
+                    alert("Please select a TXT file first");
+                    return;
+                }
+
+                let formData = new FormData();
+                formData.append("map_txt", fileInput.files[0]);
+                formData.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
+
+                fetch("{% url 'validate_map_txt' %}", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById("map_txt_status").innerHTML = data.message;
+                    document.getElementById("map_txt_status").style.color = data.valid ? "green" : "red";
+
+                    txtValidated = data.valid;
+                    checkIfReadyToSubmit();
+                })
+                .catch(err => {
+                    alert("Error uploading TXT: " + err);
+                });
+            });
+           
+
+            // Prevent submit if not validated
+            $('form').on('submit', function (e) {
+                if (!excelValidated || !txtValidated) {
+                    e.preventDefault();
+                    alert("Please validate both Excel and TXT files before submitting.");
                 }
             });
+
         });
     </script>
 

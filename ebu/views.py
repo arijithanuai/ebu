@@ -2,17 +2,122 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from .models import Province, Kabupaten, Link, User
 from .forms import UserForm
+import csv
+import sys
+from django.contrib import messages
+
+# def location_selector(request):
+#     provinces = Province.objects.all()
+
+#     if request.method == 'POST':
+#         form = UserForm(request.POST)
+
+#         if form.is_valid():
+#             # Save User
+#             user_obj = form.save()
+
+#             # ✅ Check if validated Excel exists in session
+#             file_content = request.session.get('validated_file')
+#             if file_content:
+#                 try:
+#                     file_stream = io.BytesIO(file_content.encode('latin1'))
+#                     df = pd.read_excel(file_stream)
+
+#                     links_to_create = [
+#                         Link(
+#                             admCode=row["Adm_Code"],
+#                             linkNo=row["Link_No"],
+#                             linkCode=row["Link_Code"],
+#                             linkName=row["Link_Name"],
+#                             linkLengthOfficial=row["Link_Length_Official"],
+#                             linkLengthActual=row["Link_Length_Actual"],
+#                             status=row["Status"]
+#                         )
+#                         for _, row in df.iterrows()
+#                     ]
+#                     Link.objects.bulk_create(links_to_create, ignore_conflicts=True)
+#                     print(f"✅ Saved {len(links_to_create)} links to DB")
+
+#                     # Remove file from session after saving
+#                     del request.session['validated_file']
+
+#                 except Exception as e:
+#                     print(f"❌ Error saving Excel data: {e}")
+
+#             return redirect('select_location')
+
+#         else:
+#             print("Form errors:", form.errors)
+
+#     else:
+#         form = UserForm()
+
+#     return render(request, 'pk.html', {'provinces': provinces, 'form': form})
+
+from shapely import wkt
+import json
 
 def location_selector(request):
     provinces = Province.objects.all()
 
     if request.method == 'POST':
         form = UserForm(request.POST)
+
         if form.is_valid():
-            form.save()  # ✅ Save user to DB
-            return redirect('select_location')  # or any success page
+            user_obj = form.save()
+
+            # ----- Save Excel Data -----
+            excel_linknos = set()
+            file_content = request.session.get('validated_file')
+            if file_content:
+                file_stream = io.BytesIO(file_content.encode('latin1'))
+                df = pd.read_excel(file_stream)
+
+                excel_linknos = set(df["Link_No"].astype(str))
+
+                links_to_create = [
+                    Link(
+                        admCode=row["Adm_Code"],
+                        linkNo=row["Link_No"],
+                        linkCode=row["Link_Code"],
+                        linkName=row["Link_Name"],
+                        linkLengthOfficial=row["Link_Length_Official"],
+                        linkLengthActual=row["Link_Length_Actual"],
+                        status=row["Status"]
+                    )
+                    for _, row in df.iterrows()
+                ]
+                Link.objects.bulk_create(links_to_create, ignore_conflicts=True)
+                del request.session['validated_file']
+                messages.success(request, f"✅ Link data uploaded successfully! {len(links_to_create)} records saved.")
+
+            # ----- Save TXT Data (only for existing LinkNos) -----
+            txt_content = request.session.get("validated_txt")
+            if txt_content:
+                txt_link_data = json.loads(txt_content)
+
+                from .models import Alignment  # Assuming model exists
+                alignments_to_create = []
+                for linkno, line_wkt in txt_link_data:
+                    if linkno in excel_linknos:
+                        geom = wkt.loads(line_wkt)
+                        alignments_to_create.append(
+                            Alignment(link_No_id=linkno, link_Geometery=geom)
+                        )
+
+                if alignments_to_create:
+                    Alignment.objects.bulk_create(alignments_to_create, ignore_conflicts=True)
+                    messages.success(request, f"✅ Alignment data uploaded successfully! {len(alignments_to_create)} records saved.")
+                else:
+                    messages.warning(request, "⚠ No matching LinkNo found between TXT and Excel data.")
+
+                del request.session['validated_txt']
+
+            return redirect('select_location')
+
         else:
-            print("Form errors:", form.errors)  # ✅ Print form errors for debug
+            print("Form errors:", form.errors)
+
     else:
         form = UserForm()
 
@@ -28,78 +133,124 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 
+# @csrf_exempt
+# def validate_link_excel(request):
+#     if request.method == "POST" and request.FILES.get("link_excel"):
+#         file = request.FILES["link_excel"]
+        
+#         # Step 1: Check if it's an Excel file
+#         try:
+#             df = pd.read_excel(file)
+#         except Exception as e:
+#             return JsonResponse({"valid": False, "message": f"Invalid Excel file: {e}"})
+        
+#         # Step 2: Check required columns
+#         required_cols = ["Adm_Code", "Link_No", "Link_Code", "Link_Name", "Link_Length_Official", "Link_Length_Actual", "Status"]
+#         missing = [col for col in required_cols if col not in df.columns]
+#         if missing:
+#             return JsonResponse({"valid": False, "message": f"Missing columns: {', '.join(missing)}"})
+
+#          # Step 2: Check required columns
+#         required_cols = ["Adm_Code", "Link_No", "Link_Code", "Link_Name", "Link_Length_Official", "Link_Length_Actual", "Status"]
+#         missing = [col for col in required_cols if col not in df.columns]
+#         if missing:
+#             return JsonResponse({"valid": False, "message": f"Missing columns: {', '.join(missing)}"})
+
+#         # Step 3: Check if table is empty
+#         if df.empty:
+#             return JsonResponse({"valid": False, "message": "Excel file contains no data"})
+
+#         # Step 4: Check for missing fields in required columns
+#         # This will find rows with *any* NaN/empty in the required columns
+#         incomplete_rows = df[df[required_cols].isnull().any(axis=1)]
+#         if not incomplete_rows.empty:
+#             # Get unique Link_No values for rows with missing data
+#             bad_links = incomplete_rows["Link_No"].dropna().unique().tolist()
+#             return JsonResponse({
+#                 "valid": False,
+#                 "message": f"Missing data in required fields for Link_No(s): {', '.join(map(str, bad_links))}"
+#             })
+#         # Step 5: Passed validation
+#         return JsonResponse({"valid": True, "message": "Link Excel file is valid ✅"})
+
+#     return JsonResponse({"valid": False, "message": "No file uploaded"})
+
+import io
+
 @csrf_exempt
 def validate_link_excel(request):
     if request.method == "POST" and request.FILES.get("link_excel"):
         file = request.FILES["link_excel"]
         
-        # Step 1: Check if it's an Excel file
         try:
             df = pd.read_excel(file)
         except Exception as e:
             return JsonResponse({"valid": False, "message": f"Invalid Excel file: {e}"})
         
-        # Step 2: Check required columns
         required_cols = ["Adm_Code", "Link_No", "Link_Code", "Link_Name", "Link_Length_Official", "Link_Length_Actual", "Status"]
         missing = [col for col in required_cols if col not in df.columns]
         if missing:
             return JsonResponse({"valid": False, "message": f"Missing columns: {', '.join(missing)}"})
 
-         # Step 2: Check required columns
-        required_cols = ["Adm_Code", "Link_No", "Link_Code", "Link_Name", "Link_Length_Official", "Link_Length_Actual", "Status"]
-        missing = [col for col in required_cols if col not in df.columns]
-        if missing:
-            return JsonResponse({"valid": False, "message": f"Missing columns: {', '.join(missing)}"})
-
-        # Step 3: Check if table is empty
         if df.empty:
             return JsonResponse({"valid": False, "message": "Excel file contains no data"})
 
-        # Step 4: Check for missing fields in required columns
-        # This will find rows with *any* NaN/empty in the required columns
         incomplete_rows = df[df[required_cols].isnull().any(axis=1)]
         if not incomplete_rows.empty:
-            # Get unique Link_No values for rows with missing data
             bad_links = incomplete_rows["Link_No"].dropna().unique().tolist()
             return JsonResponse({
                 "valid": False,
-                "message": f"Missing data in required fields for Link_No(s): {', '.join(map(str, bad_links))}"
+                "message": f"Missing data for Link_No(s): {', '.join(map(str, bad_links))}"
             })
-        # Step 5: Passed validation
+
+        # ✅ Store file in session for later use
+        file_stream = io.BytesIO()
+        df.to_excel(file_stream, index=False)
+        request.session['validated_file'] = file_stream.getvalue().decode('latin1')
+
         return JsonResponse({"valid": True, "message": "Link Excel file is valid ✅"})
 
     return JsonResponse({"valid": False, "message": "No file uploaded"})
 
-import io
-from .models import Link
 
-def save_link_excel(request):
-    if request.method == "POST":
-        file_content = request.session.get('validated_file')
-        if not file_content:
-            return JsonResponse({"success": False, "message": "No validated file found"})
+@csrf_exempt
+def validate_map_txt(request):
+    if request.method == "POST" and request.FILES.get("map_txt"):
+        file = request.FILES["map_txt"]
 
-        # Convert back to DataFrame
-        file_stream = io.BytesIO(file_content.encode('latin1'))
-        df = pd.read_excel(file_stream)
-
-        objs = [
-            Link(
-                admCode=row["Adm_Code"],
-                linkNo=row["Link_No"],
-                linkCode=row["Link_Code"],
-                linkName=row["Link_Name"],
-                linkLengthOfficial=row["Link_Length_Official"],
-                linkLengthActual=row["Link_Length_Actual"],
-                status=row["Status"]
+        try:
+            import csv
+            from shapely import wkt
+            csv.field_size_limit(sys.maxsize) 
+            link_data = []
+            reader = csv.DictReader(
+                (line.decode("utf-8") for line in file),
+                delimiter=";"
             )
-            for _, row in df.iterrows()
-        ]
-        Link.objects.bulk_create(objs, ignore_conflicts=True)
+            for row in reader:
+                linkno = str(row["oid"]).strip()
+                line_wkt = row["Line"].strip()
+                # Ensure it's a valid LINESTRING
+                try:
+                    geom = wkt.loads(line_wkt)
+                    if geom.geom_type != "LineString":
+                        return JsonResponse({"valid": False, "message": f"Invalid geometry type for LinkNo {linkno}"})
+                except Exception as e:
+                    return JsonResponse({"valid": False, "message": f"Invalid WKT for LinkNo {linkno}: {e}"})
 
-        # Clear stored file
-        del request.session['validated_file']
+                link_data.append((linkno, line_wkt))
 
-        return JsonResponse({"success": True, "message": f"Saved {len(objs)} records"})
-    return JsonResponse({"success": False, "message": "Invalid request"})
+            if not link_data:
+                return JsonResponse({"valid": False, "message": "No valid link data found in TXT"})
 
+            # ✅ Store validated TXT in session
+            import io
+            import json
+            request.session["validated_txt"] = json.dumps(link_data)
+
+            return JsonResponse({"valid": True, "message": f"Map TXT file is valid ✅ ({len(link_data)} records found)"})
+
+        except Exception as e:
+            return JsonResponse({"valid": False, "message": f"Error reading TXT file: {e}"})
+
+    return JsonResponse({"valid": False, "message": "No file uploaded"})
