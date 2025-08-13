@@ -45,7 +45,7 @@
 
       /* Form Layout */
       form {
-        background: #0f172a;
+        background:#10233fff;
         border: 1px solid #334155;
         border-radius: 8px;
         padding: 20px;
@@ -65,35 +65,42 @@
 
       label {
         display: block;
-        margin-bottom: 8px;
-        font-weight: 600;
+        margin: 0px 0px 8px;
         color: #f1f5f9;
-        /* Add spacing below each label */
-        margin-right: 0;
-        margin-top: 12px;
+        font-size: 16px;
+        font-family: "Times New Roman", serif;
+        font-weight:600;
+        
       }
 
+      select,
       input[type="text"],
       input[type="email"],
       input[type="tel"],
-      input[type="file"],
-      select {
+      input[type="file"] {
         width: 100%;
-        padding: 12px 14px;
+        padding: 12px;
         border: 2px solid #334155;
         border-radius: 6px;
         font-size: 1rem;
         background: #1e293b;
         color: #f1f5f9;
-        margin-bottom: 18px; /* Add space below each input */
-        margin-top: 4px;     /* Add space above each input */
-        box-sizing: border-box;
       }
 
-      /* For radio buttons, add spacing between label and input */
-      input[type="radio"] {
-        margin-right: 8px;
-        margin-left: 4px;
+      select:focus,
+      input:focus {
+        outline: none;
+        border-color:rgb(30, 103, 219);
+      }
+
+      input::placeholder {
+        color: #64748b;
+      }
+
+      select:disabled {
+        background: #0f172a;
+        color: #64748b;
+        cursor: not-allowed;
       }
 
       /* Hidden Elements */
@@ -111,7 +118,7 @@
         background: rgba(59, 130, 246, 0.05);
         cursor: pointer;
       }
-
+     
       input[type="file"]:hover {
         background: rgba(59, 130, 246, 0.1);
       }
@@ -136,19 +143,40 @@
         transition: all 0.3s ease;
         background: #04a16d;
         color: white;
-        margin-top: 20px;
+        margin-bottom: 20px;
+        margin-top:10px;
       }
-
+      
+.file-upload-section{
+display:grid;
+grid-template-columns: repeat(2, 1fr); /* 3 columns in one row */
+gap: 20px;
+}
+.upload-section{
+  border:1px solid #334155;
+  border-radius:10px;
+  padding:10px;
+}.upload-btn{
+  text-align: center;
+  margin-top: 20px; 
+ 
+}
+.db-file-conatiner{
+  margin-top:10px;
+}
+.db-file-input{
+  display:flex;
+  flex-direction:row;
+  flex:wrap;
+  padding:10px;
+  gap:10px;
+}
       button[type="submit"]:hover,
       button[type="button"]:hover {
-        background: #127556;
+        background:#04a16d;
         transform: translateY(-2px);
       }
-.file-upload-secction{
-     display: grid;
-  grid-template-columns: repeat(2, 1fr); 
-  gap: 10px;
-}
+
       /* AdmCode Display */
       #admcode-display {
         background: #1e293b;
@@ -162,12 +190,16 @@
 
       /* Upload Status Messages */
       #link_excel_msg,
-      #map_txt_status {
+      #map_txt_status{
         margin-top: 10px;
         padding: 10px;
         border-radius: 6px;
         font-weight: 500;
       }
+      #link_excel_msg:empty,
+#map_txt_status:empty {
+  display: none;
+}
 
       #link_excel_msg[style*="green"] {
         background: rgba(4, 161, 109, 0.1);
@@ -181,17 +213,14 @@
         border: 1px solid #ef4444;
       }
 #db-link-section{
-        margin-top: 10px;
-        padding: 10px;
-        max-width: 800px;
+        max-width: 500px;
       }
       /* Disabled Buttons */
       button:disabled {
-        background: #64748b;
-        color: #94a3b8;
+        background:#04a16d
+        color:rgb(255, 255, 255);
         cursor: not-allowed;
         transform: none;
-        opacity: 0.6;
       }
 
       /* Responsive Design */
@@ -225,7 +254,9 @@
   </head>
   <body>
     <div class="container">
-      <h2>PKRMS Road Data Management System</h2>
+      <div>
+        
+        <p>PKRMS Road Data Management </p></div>
       <div class="form-group">
         <!-- Status Dropdown -->
         <div>
@@ -260,9 +291,9 @@
             <select id="kabupaten" name="kabupaten">
               <option value="">-- Select Kabupaten --</option>
             </select>
+          </div>    
           </div>
-          </div>
-          <div id="admcode-section">
+          <div id="admcode-section" class="hidden">
             <label>Adm Code:</label>
             <span id="admcode-display" style="font-weight: bold"></span>
           </div>
@@ -271,25 +302,39 @@
       <div>
         <!-- AdmCode Display -->
         <div id="admcode-display class="hidden">
-          <form method="post">
-            {% csrf_token %} {{ form.as_p }}
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <input type="hidden" name="admcode" id="admcode" />
+
+            <label for="lgName">Name:</label>
+            <input type="text" name="lgName" id="lgName" class="form-control" required>
+
+            <label for="emailId">Email:</label>
+            <input type="email" name="emailId" id="emailId" class="form-control" required>
+
+            <label for="phoneNumber">Phone:</label>
+            <input type="text" name="phoneNumber" id="phoneNumber" class="form-control" required>
+
             <!-- This will include phone number and hidden admcode field -->
 
             <!-- DB File Question -->
-            <p>Do you have a DB file?</p>
+            <div class="db-file-conatiner">
+            <label>Do you have a DB file?</label>
+          <div class="db-file-input">
+            <div>
             <label>
               <input type="radio" name="has_db_file" value="yes" /> Yes
             </label>
+          </div>
+        <div>
             <label>
               <input type="radio" name="has_db_file" value="no" /> No
             </label>
-
+          </div>
+        </div>
             <!-- DB Cloud Link Field -->
-            
-
-
-            <div id="db-link-section" class="hidden" style="margin-top: 10px">
-
+            <div id="db-link-section" class="hidden">
               <label for="db_link">DB Cloud Link:</label>
               <input
                 type="file"
@@ -298,14 +343,16 @@
                 placeholder="Enter DB cloud link"
               />
             </div>
-
-<div class=file-upload-secction>
-            
-          <div Class="link-excel-section">  
-
-            <div class="excel-section >
+          </div>
             <!-- Link Excel -->
            
+            <div
+              id="link-excel-section"
+              class="hidden"
+              style="margin-top: 10px"
+            >
+            <div class="file-upload-section">
+              <div class= "upload-section"> 
               <label for="link_excel">Link excel file</label>
               <input
                 type="file"
@@ -313,254 +360,219 @@
                 id="link_excel"
                 accept=".xlsx,.xls"
               />
+              <div id="link_excel_msg"></div>
               <button type="button" id="upload_link_btn" class="hidden">
                 Upload
               </button>
-              <div id="link_excel_msg"></div>
-
-
-            </div>
+             
             </div>
 
 
-
-
-<div class="map-txt-section">
               <!-- Map TXT -->
+              <div class= "upload-section">
               <div>
                 <label for="map_txt">Map TXT File</label>
                 <input type="file" name="map_txt" id="map_txt" accept=".txt" />
+                <div id="map_txt_status"></div>
+
                 <button type="button" id="upload_map_txt" class="hidden">
                   Upload
                 </button>
-                <span id="map_txt_status"></span>
               </div>
-
-
 
               <label for="drp">DRP:</label>
               <input type="file" name="link_drpexcel" id="drp" />
             </div>
-</div>
-
-<div>
-</div>
+</div></div>
             <br /><br />
+            <div class="upload-btn">
+                <div id="form-messages">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
             <button type="submit">Submit</button>
+          </div>
           </form>
         </div>
       </div>
     </div>
 
-    <script>
-      $(document).ready(function () {
-        let excelValidated = false;
-        let txtValidated = false;
+<script>
+$(document).ready(function () {
+    let excelValidated = false;
+    let txtValidated = false;
+    let excelCount = 0;
+    let txtMatchedCount = 0;
+    
+    // Initially disable TXT and Submit
+    $("#map_txt").prop("disabled", true);
+    $("button[type=submit]").prop("disabled", true);
+    
+    function checkIfReadyToSubmit() {
+        $("button[type=submit]").prop("disabled", !(excelValidated && txtValidated));
+    }
 
-        // Initially disable TXT and Submit
-        $("#map_txt").prop("disabled", true);
-        $("button[type=submit]").prop("disabled", true);
+    function showAdmCode(admCode) {
+        $("#admcode-section").removeClass("hidden");
+        $("#admcode-display").text(admCode);
+        $('input[name="admcode"]').val(admCode);
+    }
 
-        function checkIfReadyToSubmit() {
-          if (excelValidated && txtValidated) {
-            $("button[type=submit]").prop("disabled", false);
-          } else {
-            $("button[type=submit]").prop("disabled", true);
-          }
-        }
+    function hideAdmCode() {
+        $("#admcode-section").addClass("hidden");
+        $("#admcode-display").text("");
+        $('input[name="admcode"]').val("");
+    }
 
-        function showAdmCode(admCode) {
-          $("#admcode-section").removeClass("hidden");
-          $("#admcode-display").text(admCode);
-          $('input[name="admcode"]').val(admCode); // set hidden field value
-        }
+    // Status change
+    $("#status").on("change", function () {
+        const status = $(this).val();
+        $("#province").val("");
+        $("#kabupaten").empty().append('<option value="">-- Select Kabupaten --</option>');
+        hideAdmCode();
+        $("#province-section, #kabupaten-section").addClass("hidden");
 
-        function hideAdmCode() {
-          $("#admcode-section").addClass("hidden");
-          $("#admcode-display").text("");
-          $('input[name="admcode"]').val(""); // clear hidden field
-        }
-
-        // On status change
-        $("#status").on("change", function () {
-          const status = $(this).val();
-          $("#province").val("");
-          $("#kabupaten")
-            .empty()
-            .append('<option value="">-- Select Kabupaten --</option>');
-          hideAdmCode();
-          $("#province-section").addClass("hidden");
-          $("#kabupaten-section").addClass("hidden");
-
-          if (status === "province") {
+        if (status === "province") {
             $("#province-section").removeClass("hidden");
-          } else if (status === "kabupaten") {
-            $("#province-section").removeClass("hidden");
-            $("#kabupaten-section").removeClass("hidden");
-          }
-        });
+        } else if (status === "kabupaten") {
+            $("#province-section, #kabupaten-section").removeClass("hidden");
+        }
+    });
 
-        // On province change
-        $("#province").on("change", function () {
-          const status = $("#status").val();
-          const selectedOption = $(this).find(":selected");
-          const provinceId = $(this).val();
-          const pCode = selectedOption.data("pcode");
-          hideAdmCode();
+    // Province change
+    $("#province").on("change", function () {
+        const status = $("#status").val();
+        const selectedOption = $(this).find(":selected");
+        const provinceId = $(this).val();
+        const pCode = selectedOption.data("pcode");
+        hideAdmCode();
 
-          if (status === "province") {
-            if (pCode) {
-              const admCode = `${pCode}-00`;
-              showAdmCode(admCode);
-            }
-          }
+        if (status === "province" && pCode) {
+            showAdmCode(`${pCode}-00`);
+        }
 
-          if (status === "kabupaten") {
-            $("#kabupaten")
-              .empty()
-              .append('<option value="">-- Loading --</option>');
+        if (status === "kabupaten") {
+            $("#kabupaten").empty().append('<option value="">-- Loading --</option>');
             if (provinceId) {
-              $.ajax({
-                url: "{% url 'get_kabupatens' %}",
-                data: { province_id: provinceId },
-                success: function (data) {
-                  $("#kabupaten")
-                    .empty()
-                    .append('<option value="">-- Select Kabupaten --</option>');
-                  $.each(data, function (index, item) {
-                    const kCode = item.kCode.toString();
-                    const lastTwo = kCode.slice(-2).padStart(2, "0");
-                    const admCode = `${pCode}-${lastTwo}`;
-                    $("#kabupaten").append(
-                      `<option value="${item.id}" data-kcode="${item.kCode}" data-admcode="${admCode}">${item.admNameEng}</option>`
-                    );
-                  });
-                },
-              });
+                $.ajax({
+                    url: "{% url 'get_kabupatens' %}",
+                    data: { province_id: provinceId },
+                    success: function (data) {
+                        $("#kabupaten").empty().append('<option value="">-- Select Kabupaten --</option>');
+                        $.each(data, function (index, item) {
+                            const kCode = item.kCode.toString();
+                            const lastTwo = kCode.slice(-2).padStart(2, "0");
+                            const admCode = `${pCode}-${lastTwo}`;
+                            $("#kabupaten").append(
+                                `<option value="${item.id}" data-kcode="${item.kCode}" data-admcode="${admCode}">${item.admNameEng}</option>`
+                            );
+                        });
+                    },
+                });
             }
-          }
-        });
+        }
+    });
 
-        // On kabupaten change
-        $("#kabupaten").on("change", function () {
-          const selected = $(this).find(":selected");
-          const admCode = selected.data("admcode");
-          if (admCode) {
-            showAdmCode(admCode);
-          } else {
-            hideAdmCode();
-          }
-        });
+    // Kabupaten change
+    $("#kabupaten").on("change", function () {
+        const selected = $(this).find(":selected");
+        const admCode = selected.data("admcode");
+        admCode ? showAdmCode(admCode) : hideAdmCode();
+    });
 
-        // DB file radio toggle
-        $('input[name="has_db_file"]').on("change", function () {
-          const selected = $(this).val();
-          if (selected === "yes") {
+    // DB file toggle
+    $('input[name="has_db_file"]').on("change", function () {
+        if ($(this).val() === "yes") {
             $("#db-link-section").removeClass("hidden");
             $("#link-excel-section").addClass("hidden");
-          } else {
+        } else {
             $("#link-excel-section").removeClass("hidden");
             $("#db-link-section").addClass("hidden");
             $("#db_link").val("");
-          }
-        });
+        }
+    });
 
-        // Show upload button when file selected
-        document
-          .getElementById("link_excel")
-          .addEventListener("change", function () {
-            document.getElementById("upload_link_btn").style.display =
-              "inline-block";
-          });
+    // Show Excel upload btn
+    $("#link_excel").on("change", function () {
+        $("#upload_link_btn").show();
+    });
 
-        // Upload Excel validation
-        document
-          .getElementById("upload_link_btn")
-          .addEventListener("click", function () {
-            let fileInput = document.getElementById("link_excel");
-            if (!fileInput.files.length) {
-              alert("Please select a file first");
-              return;
+    // Validate Excel
+    // Validate Excel
+    $("#upload_link_btn").on("click", function () {
+        let fileInput = $("#link_excel")[0];
+        if (!fileInput.files.length) {
+            alert("Please select a file first");
+            return;
+        }
+
+        let formData = new FormData();
+        formData.append("link_excel", fileInput.files[0]);
+        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+        formData.append("admcode", $('input[name="admcode"]').val()); // ✅ send admCode
+
+        fetch("{% url 'validate_link_excel' %}", { method: "POST", body: formData })
+        .then(res => res.json())
+        .then(data => {
+            $("#link_excel_msg").html(data.message).css("color", data.valid ? "green" : "red");
+            excelValidated = data.valid;
+            if (data.valid) {
+                excelCount = data.count || 0;
+                $("#map_txt").prop("disabled", false);
+            } else {
+                $("#map_txt").prop("disabled", true);
+                txtValidated = false;
             }
+            checkIfReadyToSubmit();
+        })
+        .catch(err => alert(`Error uploading file: ${err.message || err}`));
+    });
 
-            let formData = new FormData();
-            formData.append("link_excel", fileInput.files[0]);
-            formData.append(
-              "csrfmiddlewaretoken",
-              document.querySelector("[name=csrfmiddlewaretoken]").value
-            );
+    // Validate TXT
+    $("#upload_map_txt").on("click", function () {
+        let fileInput = $("#map_txt")[0];
+        if (!fileInput.files.length) {
+            alert("Please select a TXT file first");
+            return;
+        }
 
-            fetch("{% url 'validate_link_excel' %}", {
-              method: "POST",
-              body: formData,
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                let msgDiv = document.getElementById("link_excel_msg");
-                msgDiv.innerHTML = data.message;
-                msgDiv.style.color = data.valid ? "green" : "red";
+        let formData = new FormData();
+        formData.append("map_txt", fileInput.files[0]);
+        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
-                excelValidated = data.valid;
-                if (data.valid) {
-                  $("#map_txt").prop("disabled", false); // Enable TXT upload
-                } else {
-                  $("#map_txt").prop("disabled", true);
-                  txtValidated = false;
-                }
-                checkIfReadyToSubmit();
-              })
-              .catch((err) => {
-                console.error(err);
-                alert(`Error uploading file: ${err.message || err}`);
-              });
-          });
-
-        // Upload TXT validation
-        document
-          .getElementById("upload_map_txt")
-          .addEventListener("click", function () {
-            let fileInput = document.getElementById("map_txt");
-            if (!fileInput.files.length) {
-              alert("Please select a TXT file first");
-              return;
+        fetch("{% url 'validate_map_txt' %}", { method: "POST", body: formData })
+        .then(res => res.json())
+        .then(data => {
+            $("#map_txt_status").html(data.message).css("color", data.valid ? "green" : "red");
+            txtValidated = data.valid;
+            if (data.valid) {
+                txtMatchedCount = data.count || 0;
             }
+            checkIfReadyToSubmit();
+        })
+        .catch(err => alert("Error uploading TXT: " + err));
+    });
 
-            let formData = new FormData();
-            formData.append("map_txt", fileInput.files[0]);
-            formData.append(
-              "csrfmiddlewaretoken",
-              document.querySelector("[name=csrfmiddlewaretoken]").value
-            );
-
-            fetch("{% url 'validate_map_txt' %}", {
-              method: "POST",
-              body: formData,
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                document.getElementById("map_txt_status").innerHTML =
-                  data.message;
-                document.getElementById("map_txt_status").style.color =
-                  data.valid ? "green" : "red";
-
-                txtValidated = data.valid;
-                checkIfReadyToSubmit();
-              })
-              .catch((err) => {
-                alert("Error uploading TXT: " + err);
-              });
-          });
-
-        // Prevent submit if not validated
-        $("form").on("submit", function (e) {
-          if (!excelValidated || !txtValidated) {
+    // Confirm before submit
+    $("form").on("submit", function (e) {
+        if (!excelValidated || !txtValidated) {
             e.preventDefault();
-            alert(
-              "Please validate both Excel and TXT files before submitting."
-            );
-          }
-        });
-      });
-    </script>
+            alert("Please validate both Excel and TXT files before submitting.");
+            return;
+        }
+        let confirmMsg = `Excel contains ${excelCount} Link records.\nAre you sure you want to submit?`;
+        if (!confirm(confirmMsg)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+
   </body>
 </html>
