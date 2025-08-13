@@ -32,6 +32,9 @@ class User(models.Model):
     phoneNumber = models.CharField(max_length=15)  # Changed from IntegerField
     dbCloudLink = models.CharField(max_length=100)
 
+    def __str__(self):
+        return f"{self.lgName} ({self.admcode})"
+    
     class Meta: 
         db_table = 'user'
 
@@ -62,7 +65,7 @@ class Link(models.Model):
     accessStatus = models.CharField(null=True, blank=True, max_length=100, db_column='accessStatus')
 
     def __str__(self):
-        return f"{self.linkName} ({self.linkNo})"
+        return f"{self.linkName} ({self.linkNo}) - ({self.linkCode})"
     
     class Meta:
         db_table = 'link'
@@ -74,5 +77,26 @@ class Alignment(models.Model):
     linkNo = models.ForeignKey(Link, on_delete=models.CASCADE, related_name='alignments')
     linkGeometry = models.GeometryField(srid=4326)  # You can also use LineStringField if always lines
 
+    def __str__(self):
+        return f"Alignment for {self.linkNo.linkName} ({self.admCode})"
+    
     class Meta:
         db_table = 'alignment'
+        
+    
+    
+# def drp_upload_path(instance, filename):
+#     ext = filename.split('.')[-1]  # get original extension
+#     return f"drp_files/{instance.admCode}.{ext}"  # rename to admCode.ext
+
+# class drp(models.Model):
+#     admCode = models.CharField(max_length=20)
+#     drpFile = models.FileField(upload_to=drp_upload_path)
+
+#     def __str__(self):
+#         return f"DRP for {self.admCode}"
+    
+#     class Meta:
+#         db_table = 'drp'
+#         verbose_name_plural = 'DRP Files'
+    
