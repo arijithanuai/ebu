@@ -86,6 +86,8 @@ DATABASES = {
     )
 }
 
+
+
 # Force PostGIS backend
 DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'
 
@@ -143,3 +145,12 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+import os
+
+if os.name == 'nt':  # Windows
+    os.environ['PATH'] = r"C:\OSGeo4W\bin;" + os.environ['PATH']
+    GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal311.dll"   # adjust version if needed
+    GEOS_LIBRARY_PATH = r"C:\OSGeo4W\bin\geos_c.dll"
+    PROJ_LIB = r"C:\OSGeo4W\share\proj"

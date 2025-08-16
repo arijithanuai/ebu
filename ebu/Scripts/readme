@@ -1,0 +1,354 @@
+# Database Validation System
+
+This project provides comprehensive data validation for multiple database tables in the PKRMS (Provincial Road Management System) database.
+
+## Overview
+
+The validation system checks data integrity, required fields, data types, and business rules across all tables in the database. Results are exported to Excel with detailed error reporting.
+
+## Change the path of the db File in main.py first 
+## Also install the required packages from the requirements.txt
+
+## Database Tables and Validation Rules
+
+### 1. Link Table
+**File**: `validate_link.py`
+**Required Columns**:
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+- Link_Code (Short Text)
+- Link_Name (Short Text)
+- Link_Length_Official (Number)
+- Link_Length_Actual (Number)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Link_Length_Official and Link_Length_Actual must be numeric values ≥ 0
+- Text fields must contain valid text data
+
+### 2. Alignment Table
+**File**: `validate_alignment.py`
+**Required Columns**:
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+- Alignment_No (Short Text)
+- Alignment_Length (Number)
+- Alignment_Type (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Alignment_Length must be numeric values ≥ 0
+- Cross-table validation with Link table for Link_No consistency
+- Text fields must contain valid text data
+
+### 3. RoadCondition Table
+**File**: `validate_road_condition.py`
+**Required Columns**:
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+- Road_Condition_No (Short Text)
+- Road_Condition_Length (Number)
+- Road_Condition_Type (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Road_Condition_Length must be numeric values ≥ 0
+- Cross-table validation with Link table for Link_No consistency
+- Text fields must contain valid text data
+
+### 4. RoadInventory Table
+**File**: `validate_road_inventory.py`
+**Required Columns**:
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+- Road_Inventory_No (Short Text)
+- Road_Inventory_Length (Number)
+- Road_Inventory_Type (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Road_Inventory_Length must be numeric values ≥ 0
+- Cross-table validation with Link table for Link_No consistency
+- Text fields must contain valid text data
+
+### 5. BridgeInventory Table
+**File**: `validate_bridge_inventory.py`
+**Required Columns**:
+- Year (Short Text)
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+- Bridge_Number (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Cross-table validation with Link table for Link_No consistency
+- Text fields must contain valid text data
+
+### 6. CulvertCondition Table
+**File**: `validate_culvert_condition.py`
+**Required Columns**:
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+- Culvert_Condition_No (Short Text)
+- Culvert_Condition_Length (Number)
+- Culvert_Condition_Type (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Culvert_Condition_Length must be numeric values ≥ 0
+- Cross-table validation with Link table for Link_No consistency
+- Text fields must contain valid text data
+
+### 7. CulvertInventory Table
+**File**: `validate_culvert_inventory.py`
+**Required Columns**:
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+- Culvert_Inventory_No (Short Text)
+- Culvert_Inventory_Length (Number)
+- Culvert_Inventory_Type (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Culvert_Inventory_Length must be numeric values ≥ 0
+- Cross-table validation with Link table for Link_No consistency
+- Text fields must contain valid text data
+
+### 8. RetainingWallCondition Table
+**File**: `validate_retaining_wall_condition.py`
+**Required Columns**:
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+- Retaining_Wall_Condition_No (Short Text)
+- Retaining_Wall_Condition_Length (Number)
+- Retaining_Wall_Condition_Type (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Retaining_Wall_Condition_Length must be numeric values ≥ 0
+- Cross-table validation with Link table for Link_No consistency
+- Text fields must contain valid text data
+
+### 9. RetainingWallInventory Table
+**File**: `validate_retaining_wall_inventory.py`
+**Required Columns**:
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+- Retaining_Wall_Inventory_No (Short Text)
+- Retaining_Wall_Inventory_Length (Number)
+- Retaining_Wall_Inventory_Type (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Retaining_Wall_Inventory_Length must be numeric values ≥ 0
+- Cross-table validation with Link table for Link_No consistency
+- Text fields must contain valid text data
+
+### 10. TrafficVolume Table
+**File**: `validate_traffic_vloume.py`
+**Required Columns**:
+- Year (Number)
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Link_No (Short Text)
+
+**Additional Fields**:
+- MarketDay (Yes/No)
+- TrafficCount (Short Text)
+- JourneyTime (Number)
+- AADT_MC (Number)
+- AADT_Car (Number)
+- AADT_Pickup (Number)
+- AADT_MicroTruck (Number)
+- AADT_Small_Bus (Number)
+- AADT_Large_Bus (Number)
+- AADT_Small_Truck (Number)
+- AADT_Medium_Truck (Number)
+- AADT_Large_Truck (Number)
+- AADT_Truck_Trailer (Number)
+- AADT_Semi_Trailer (Number)
+- AnalysisBaseYear (Yes/No)
+- SurveyBy (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Year must be numeric (no range validation)
+- JourneyTime and AADT fields must be numeric values ≥ 0
+- Cross-table validation with Link table for Link_No consistency
+- Link_No uniqueness validation (one record per link)
+- Text fields must contain valid text data
+- Yes/No fields must be valid boolean values
+
+### 11. CODE_AN_UnitCostsPER Table
+**File**: `validate_code_an_unitCostsPER.py`
+**Required Columns** (Top 3):
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Overlay_thick (Number)
+
+**Additional Fields**:
+- Per_unitcost (Number)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Numeric fields must be ≥ 0
+- Text fields must contain valid text data
+
+### 12. CODE_AN_UnitCostsPERUnpaved Table
+**File**: `validate_code_an_unitCostsPERUnpaved.py`
+**Required Columns** (Top 6):
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- CUMESA1 (Number)
+- CUMESA2 (Number)
+- Pave_width1 (Number)
+- Pave_width2 (Number)
+
+**Additional Fields**:
+- Reh_Unitcost (Number)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Numeric fields must be ≥ 0
+- Text fields must contain valid text data
+
+### 13. CODE_AN_UnitCostsREH Table
+**File**: `validate_code_an_unitCostsREH.py`
+**Required Columns** (Top 2):
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+
+**Additional Fields**:
+- Reh_UnitCost (Number)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Numeric fields must be ≥ 0
+- Text fields must contain valid text data
+
+### 14. CODE_AN_UnitCostsRIGID Table
+**File**: `validate_code_an_unitCostsRIGID.py`
+**Required Columns** (Top 3):
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- CODE (Short Text)
+
+**Additional Fields**:
+- PerUnitCost (Number)
+- RehUnitCost (Number)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Numeric fields must be ≥ 0
+- Text fields must contain valid text data
+
+### 15. CODE_AN_UnitCostsRM Table
+**File**: `validate_code_an_unitCostsRm.py`
+**Required Columns** (Top 4):
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- RM_activity (Short Text)
+- Terrain (Short Text)
+
+**Additional Fields**:
+- Unit (Short Text)
+- RM_NetworkElement (Short Text)
+- RM_Category (Short Text)
+- RM_Priority (Number)
+- RM_Quantity (Number)
+- RM_Unitcost (Number)
+- RM_OnOff (Short Text)
+- RM_ReportCategory (Short Text)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Numeric fields must be ≥ 0
+- Text fields must contain valid text data
+
+### 16. CODE_AN_UnitCostsUPGUnpaved Table
+**File**: `validate_code_an_unitCostsUPGUnpaved.py`
+**Required Columns** (Top 3):
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- Pave_width1 (Number)
+
+**Additional Fields**:
+- Upg_UnitCost (Number)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Numeric fields must be ≥ 0
+- Text fields must contain valid text data
+
+### 17. CODE_AN_UnitCostsWidening Table
+**File**: `validate_code_an_unitCostsWidening.py`
+**Required Columns** (Top 4):
+- Province_Code (Short Text)
+- Kabupaten_Code (Short Text)
+- CUMESA1 (Number)
+- CUMESA2 (Number)
+
+**Additional Fields**:
+- WideningSealed_Unitcost (Number)
+- WideningUnsealed_Unitcost (Number)
+
+**Validation Rules**:
+- All required columns must be present and non-empty
+- Numeric fields must be ≥ 0
+- Text fields must contain valid text data
+
+## Data Types Supported
+
+- **Short Text**: Accepts string, integer, and float values (converted to text)
+- **Number**: Accepts numeric values with optional range validation (default: ≥ 0)
+
+## Validation Features
+
+### Common Validation Rules
+1. **Required Field Validation**: Ensures mandatory columns are present and non-empty
+2. **Data Type Validation**: Validates that data matches expected types
+3. **Range Validation**: For numeric fields, ensures values are within specified ranges
+4. **Cross-Table Validation**: Links between tables are validated for consistency
+5. **Empty Database Handling**: Provides warnings when tables are completely empty
+
+### Error Reporting
+- **Record_No**: 1-based row number for error identification
+- **Validation_Message**: Detailed error description for each issue
+- **Excel Export**: All validation results saved to `validation_outputs/link_validation.xlsx`
+- **Console Summary**: Overview of validation issues per table
+
+## Usage
+
+Run the main validation script:
+```bash
+python main.py
+```
+
+The script will:
+1. Connect to the database
+2. Validate all tables according to their specific rules
+3. Generate detailed error reports
+4. Export results to Excel with auto-adjusted column widths
+5. Display a summary of validation issues
+
+## Output
+
+- **Excel File**: `validation_outputs/link_validation.xlsx` with separate sheets for each table
+- **Console Output**: Progress indicators and summary statistics
+- **Error Details**: Specific validation errors with record numbers and descriptions
+
+## Database Connection
+
+The system connects to an Access database at:
+`C:\Users\ritik\Downloads\office wor\PKRMS Kab. MESUJI 2023.accdb`
+
+Ensure the database file exists and is accessible before running the validation.
