@@ -189,6 +189,45 @@ def validate_link_excel(request):
 
 
 @csrf_exempt
+# def validate_map_txt(request):
+#     if request.method == "POST" and request.FILES.get("map_txt"):
+#         file = request.FILES["map_txt"]
+
+#         try:
+#             import csv
+#             from shapely import wkt
+#             csv.field_size_limit(sys.maxsize) 
+#             link_data = []
+#             reader = csv.DictReader(
+#                 (line.decode("utf-8") for line in file),
+#                 delimiter=";"
+#             )
+#             for row in reader:
+#                 linkno = str(row["LinkId"]).strip()
+#                 line_wkt = row["Line"].strip()
+#                 try:
+#                     geom = wkt.loads(line_wkt)
+#                     if geom.geom_type != "LineString":
+#                         return JsonResponse({"valid": False, "message": f"Invalid geometry type for LinkNo {linkno}"})
+#                 except Exception as e:
+#                     return JsonResponse({"valid": False, "message": f"Invalid WKT for LinkNo {linkno}: {e}"})
+#                 link_data.append((linkno, line_wkt))
+
+#             if not link_data:
+#                 return JsonResponse({"valid": False, "message": "No valid link data found in TXT"})
+
+#             # Store validated TXT in session
+#             request.session["validated_txt"] = json.dumps(link_data)
+
+#             return JsonResponse({"valid": True, "message": f"Map TXT file is valid   ({len(link_data)} records found)", "count": len(link_data)})
+
+#         except Exception as e:
+#             return JsonResponse({"valid": False, "message": f"Error reading TXT file: {e}"})
+
+#     return JsonResponse({"valid": False, "message": "No file uploaded"})
+
+
+@csrf_exempt
 def validate_map_txt(request):
     if request.method == "POST" and request.FILES.get("map_txt"):
         file = request.FILES["map_txt"]
@@ -198,28 +237,48 @@ def validate_map_txt(request):
             from shapely import wkt
             csv.field_size_limit(sys.maxsize) 
             link_data = []
+
             reader = csv.DictReader(
                 (line.decode("utf-8") for line in file),
                 delimiter=";"
             )
+
             for row in reader:
                 linkno = str(row["LinkId"]).strip()
                 line_wkt = row["Line"].strip()
+
+                # Validate WKT
                 try:
                     geom = wkt.loads(line_wkt)
                     if geom.geom_type != "LineString":
-                        return JsonResponse({"valid": False, "message": f"Invalid geometry type for LinkNo {linkno}"})
+                        return JsonResponse({"valid": False, "message": f"Invalid geometry type for LinkId {linkno}"})
                 except Exception as e:
-                    return JsonResponse({"valid": False, "message": f"Invalid WKT for LinkNo {linkno}: {e}"})
+                    return JsonResponse({"valid": False, "message": f"Invalid WKT for LinkId {linkno}: {e}"})
+
                 link_data.append((linkno, line_wkt))
 
             if not link_data:
                 return JsonResponse({"valid": False, "message": "No valid link data found in TXT"})
 
-            # Store validated TXT in session
+            #   Compare with Excel linkCodes from session
+            matched_count = 0
+            file_content = request.session.get("validated_file")
+            if file_content:
+                import io, pandas as pd
+                file_stream = io.BytesIO(file_content.encode('latin1'))
+                df = pd.read_excel(file_stream)
+
+                excel_linkcodes = set(df["Link_Code"].astype(str))
+                matched_count = sum(1 for linkno, _ in link_data if linkno in excel_linkcodes)
+
+            #   Store validated TXT in session
             request.session["validated_txt"] = json.dumps(link_data)
 
-            return JsonResponse({"valid": True, "message": f"Map TXT file is valid   ({len(link_data)} records found)", "count": len(link_data)})
+            return JsonResponse({
+                "valid": True,
+                "message": f"Alignment TXT file is valid   ({len(link_data)} records, {matched_count} matched with Excel)",
+                "count": matched_count
+            })
 
         except Exception as e:
             return JsonResponse({"valid": False, "message": f"Error reading TXT file: {e}"})
