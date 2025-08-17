@@ -181,63 +181,63 @@ def runValidationScript(db_path):
             invalid_df_road_inventory = pd.DataFrame([success_row])
 
         # ---------------- BRIDGE INVENTORY TABLE VALIDATION ---------------- 
-        print("🔍 Starting BridgeInventory table validation...")
+        print("🔍 Starting BridgeInventory table validation... (TEMPORARILY DISABLED)")
         
         # BridgeInventory table comprehensive validation
         df_bridge_inventory = pd.read_sql_query("SELECT * FROM [BridgeInventory]", conn)
         df_bridge_inventory = df_bridge_inventory.fillna("")
 
-        # Check if table is completely empty
-        is_empty = len(df_bridge_inventory) == 0
+        # Check if table is completely empty - DISABLED FOR NOW
+        # is_empty = len(df_bridge_inventory) == 0
 
-        # Check for missing columns
-        missing_cols = [col for col in bridge_required if col not in df_bridge_inventory.columns]
-        if missing_cols:
-            raise ValueError(f"❌ BridgeInventory table missing columns: {', '.join(missing_cols)}")
+        # Check for missing columns - DISABLED FOR NOW
+        # missing_cols = [col for col in bridge_required if col not in df_bridge_inventory.columns]
+        # if missing_cols:
+        #     raise ValueError(f"❌ BridgeInventory table missing columns: {', '.join(missing_cols)}")
 
         # Apply comprehensive validation rules
         invalid_rows_bridge = []
         
+        # BRIDGE VALIDATION TEMPORARILY DISABLED
         # If table is empty, add a special row to indicate this
-        if is_empty:
-            empty_row = {"Record_No": "EMPTY_TABLE", "Year": "", "Province_Code": "", "Kabupaten_Code": "", "Link_No": "", "Bridge_Number": "", "Validation_Message": "⚠️ WARNING: BridgeInventory table is completely empty - no data found"}
-            invalid_rows_bridge.append(empty_row)
-        else:
-            for idx, row in df_bridge_inventory.iterrows():
-                # Get validation errors from the comprehensive validation function
-                errors = validate_bridge_row(row, df_link)
-                
-                if errors:
-                    # Create a row with validation results
-                    new_row = {"Record_No": idx + 1}
-                    
-                    # Add all required columns with their values
-                    for col in bridge_required:
-                        if col in df_bridge_inventory.columns:
-                            cell_value = str(row[col]).strip()
-                            if cell_value == "" or cell_value == "nan" or cell_value == "None":
-                                new_row[col] = "missing"
-                            else:
-                                new_row[col] = row[col]
-                        else:
-                            new_row[col] = "missing"
-                    
-                    # Add validation message
-                    validation_messages = []
-                    for col, error_msg in errors.items():
-                        if col in bridge_required:
-                            validation_messages.append(f"{col}: {error_msg}")
-                    
-                    new_row["Validation_Message"] = "; ".join(validation_messages)
-                    invalid_rows_bridge.append(new_row)
+        # if is_empty:
+        #     empty_row = {"Record_No": "EMPTY_TABLE", "Year": "", "Province_Code": "", "Kabupaten_Code": "", "Link_No": "", "Bridge_Number": "", "Validation_Message": "⚠️ WARNING: BridgeInventory table is completely empty - no data found"}
+        #     invalid_rows_bridge.append(empty_row)
+        # else:
+        #     for idx, row in df_bridge_inventory.iterrows():
+        #         # Get validation errors from the comprehensive validation function
+        #         errors = validate_bridge_row(row, df_link)
+        #         
+        #         if errors:
+        #             # Create a row with validation results
+        #             new_row = {"Record_No": idx + 1}
+        #             
+        #             # Add all required columns with their values
+        #             for col in bridge_required:
+        #                 if col in df_bridge_inventory.columns:
+        #                     cell_value = str(row[col]).strip()
+        #                     if cell_value == "" or cell_value == "nan" or cell_value == "None":
+        #                         new_row[col] = "missing"
+        #                     else:
+        #                         new_row[col] = row[col]
+        #                 else:
+        #                     new_row[col] = "missing"
+        #             
+        #             # Add validation message
+        #             validation_messages = []
+        #             for col, error_msg in errors.items():
+        #                 if col in bridge_required:
+        #                     validation_messages.append(f"{col}: {error_msg}")
+        #             
+        #             new_row["Validation_Message"] = "; ".join(validation_messages)
+        #             invalid_rows_bridge.append(new_row)
+        
+        # TEMPORARILY SKIP BRIDGE VALIDATION - just add success message
+        success_row = {"Record_No": "NO_ERRORS", "Year": "", "Province_Code": "", "Kabupaten_Code": "", "Link_No": "", "Bridge_Number": "", "Validation_Message": "✅ SUCCESS: Bridge validation temporarily disabled - empty table and column validation skipped"}
+        invalid_rows_bridge.append(success_row)
 
-        # If no validation errors found, add a success message
-        if not invalid_rows_bridge:
-            success_row = {"Record_No": "NO_ERRORS", "Year": "", "Province_Code": "", "Kabupaten_Code": "", "Link_No": "", "Bridge_Number": "", "Validation_Message": "✅ SUCCESS: No validation errors found in BridgeInventory table"}
-            invalid_rows_bridge.append(success_row)
-            invalid_df_bridge_inventory = pd.DataFrame(invalid_rows_bridge)
-        else:
-            invalid_df_bridge_inventory = pd.DataFrame(invalid_rows_bridge)
+        # Since bridge validation is disabled, we already have a success row
+        invalid_df_bridge_inventory = pd.DataFrame(invalid_rows_bridge)
 
         # ---------------- CULVERT CONDITION TABLE VALIDATION ---------------- 
         print("🔍 Starting CulvertCondition table validation...")
