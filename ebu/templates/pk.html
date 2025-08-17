@@ -269,7 +269,7 @@
         font-size:14px;
         border: 1px solid #ef4444;
       }
-#db-link-section{
+#db-section{
         max-width: 500px;
       }
       /* Disabled Buttons */
@@ -449,6 +449,7 @@
 $(document).ready(function () {
     let excelValidated = false;
     let txtValidated = false;
+    let excelCount = 0;
 
     // Initially hide sections
     $("#map-section").addClass("hidden");
@@ -464,7 +465,7 @@ $(document).ready(function () {
         
         if (hasDbFile === "yes") {
             // Check if DB file is actually selected
-            const dbFileInput = $("#db_link")[0];
+            const dbFileInput = $("#db_file")[0];
             const hasDbFileSelected = dbFileInput && dbFileInput.files.length > 0;
             $("button[type=submit]").prop("disabled", !hasDbFileSelected);
         } else if (hasDbFile === "no") {
@@ -574,6 +575,23 @@ $(document).ready(function () {
         const admCode = selected.data("admcode");
         admCode ? showAdmCode(admCode) : hideAdmCode();
     });
+
+    // DB file toggle
+    $('input[name="has_db_file"]').on("change", function () {
+        if ($(this).val() === "yes") {
+            $("#db-section").removeClass("hidden");
+            $("#link-excel-section").addClass("hidden");
+            // Check if ready to submit (button will be disabled until file is selected)
+            checkIfReadyToSubmit();
+        } else {
+            $("#link-excel-section").removeClass("hidden");
+            $("#db-section").addClass("hidden");
+            $("#db_file").val("");
+            // Check if ready to submit based on file validations
+            checkIfReadyToSubmit();
+        }
+    });
+
 
     // -------------------- DB file toggle --------------------
     // -------------------- DB file toggle --------------------
@@ -823,7 +841,7 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
         // Check if user has DB file or needs to validate Excel/TXT
         if (hasDbFile === "yes") {
             // Check if DB file is actually selected
-            const dbFileInput = $("#db_link")[0];
+            const dbFileInput = $("#db_file")[0];
             if (!dbFileInput || !dbFileInput.files.length) {
                 e.preventDefault();
                 alert("Please select a DB file before submitting.");
@@ -858,24 +876,302 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
         }
     });
 
-    // -------------------- Preselect from URL --------------------
-    const preStatus = "{{ preselect_status|default:'' }}";
-    const preProvince = "{{ preselect_province|default:'' }}";
-    const preKabupaten = "{{ preselect_kabupaten|default:'' }}";
+    // ====================== DB File Submission Handler ======================
+    // DB file selection change - just enable/disable submit button
+    $("#db_file").on("change", function() {
+        checkIfReadyToSubmit();
+    });
 
-    if (preStatus) {
-        $("#status").val(preStatus).trigger("change");
+    // Validate DB button click handler
+    $("#upload_db_btn").on("click", function() {
+        const dbFileInput = $("#db_file")[0];
+        if (!dbFileInput || !dbFileInput.files.length) {
+            alert("Please select a DB file first");
+            return;
+        }
+
+        // Show processing message
+        showDbFileStatus("Processing database file...", "processing");
+        
+        // Submit DB file for validation
+        submitDbFileForValidation(dbFileInput.files[0]);
+    });
+
+
+
+    function submitDbFileForValidation(file) {
+        const formData = new FormData();
+        formData.append("db_file", file);
+        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+
+        fetch("{% url 'validate_db_file' %}", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => {
+            if (response.headers.get('content-type') && response.headers.get('content-type').includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+                // Excel file returned - show error message with download button
+                return response.blob().then(blob => {
+                    showDbFileStatus(" Database validation failed! The database contains errors in data. Please view the Excel file for detailed information.", "error");
+                    showExcelDownloadButton(blob, response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'validation_results.xlsx');
+                });
+            } else {
+                // JSON response returned
+                return response.json();
+            }
+        })
+        .then(data => {
+            console.log("Database validation response:", data); // Debug log
+            if (data && typeof data === 'object') {
+                if (data.valid) {
+                      showDbFileStatus("Database validation completed successfully! No errors found.", "success");
+                } else {
+                    // Validation failed
+                    showDbFileStatus(`❌ ${data.message}`, "error");
+                }
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            showDbFileStatus("❌ Error processing database file. Please try again.", "error");
+        });
     }
 
-    if (preProvince) {
-        $("#province").val(preProvince).trigger("change");
-        $("#province-section").removeClass("hidden");
-
-        const pCode = $("#province option:selected").data("pcode");
-
-        if (preStatus === "province" && pCode) {
-            showAdmCode(`${pCode}-00`);
+    function showDbFileStatus(message, type) {
+        // Remove existing status if any
+        $("#db_file_status").remove();
+        
+        // Create status element
+        const statusDiv = $('<div id="db_file_status"></div>');
+        
+        // Set styling based on type
+        switch(type) {
+            case "processing":
+                statusDiv.css({
+                    "color": "orange",
+                    "background": "rgba(255, 165, 0, 0.1)",
+                    "font-size": "14px",
+                    "border": "1px solid orange",
+                    "padding": "15px",
+                    "border-radius": "6px",
+                    "margin-top": "10px",
+                    "display": "flex",
+                    "align-items": "center",
+                    "gap": "10px"
+                });
+                // Add spinning loader
+                statusDiv.html(`
+                    <div class="spinner" style="
+                        width: 20px;
+                        height: 20px;
+                        border: 2px solid orange;
+                        border-top: 2px solid transparent;
+                        border-radius: 50%;
+                        animation: spin 1s linear infinite;
+                    "></div>
+                    <span>${message}</span>
+                `);
+                break;
+            case "success":
+                statusDiv.css({
+                    "color": "#04a16d",
+                    "background": "rgba(4, 161, 109, 0.1)",
+                    "font-size": "14px",
+                    "border": "1px solid #04a16d",
+                    "padding": "15px",
+                    "border-radius": "6px",
+                    "margin-top": "10px",
+                    "display": "flex",
+                    "align-items": "center",
+                    "gap": "10px"
+                });
+                statusDiv.html(`<span style="font-size: 18px;">✅</span> <span>${message}</span>`);
+                break;
+            case "error":
+                statusDiv.css({
+                    "color": "#ef4444",
+                    "background": "rgba(239, 68, 68, 0.1)",
+                    "font-size": "14px",
+                    "border": "1px solid #ef4444",
+                    "padding": "15px",
+                    "border-radius": "6px",
+                    "margin-top": "10px",
+                    "display": "flex",
+                    "align-items": "center",
+                    "gap": "10px"
+                });
+                statusDiv.html(`<span style="font-size: 18px;">❌</span> <span>${message}</span>`);
+                break;
         }
+        
+        $("#db-section").after(statusDiv);
+    }
+
+    function showExcelDownloadButton(blob, filename) {
+        // Remove existing download button if any
+        $("#excel_download_btn").remove();
+        
+        // Create download button
+        const downloadBtn = $('<button id="excel_download_btn" type="button" style="background: #ef4444; margin-top: 10px;">📥 Download Validation Report (Excel)</button>');
+        
+        downloadBtn.on("click", function() {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            // Show download success message briefly, then reload page
+            showDbFileStatus("Excel file downloaded successfully! Reloading page...", "success");
+            
+            // Reload page after 2 seconds
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        });
+        
+        $("#db_file_status").after(downloadBtn);
+    }
+
+    function showSharePointInfo(sharepointData, driveLink, fileName) {
+        // Remove existing SharePoint info if any
+        $("#sharepoint_info").remove();
+        
+        // Create SharePoint info element
+        const infoDiv = $('<div id="sharepoint_info"></div>');
+        infoDiv.css({
+            "background": "rgba(59, 130, 246, 0.1)",
+            "border": "1px solid #3b82f6",
+            "border-radius": "6px",
+            "padding": "15px",
+            "margin-top": "10px"
+        });
+        
+        infoDiv.html(`
+            <h4 style="color: #3b82f6; margin: 0 0 10px 0;">📁 SharePoint Upload Successful</h4>
+            <p style="margin: 5px 0; color: #1e293b;"><strong>File:</strong> ${fileName || sharepointData.original_filename || 'database.accdb'}</p>
+            <p style="margin: 5px 0; color: #1e293b;"><strong>Status:</strong> ${sharepointData.upload_status}</p>
+            <p style="margin: 5px 0; color: #1e293b;"><strong>Upload Time:</strong> ${new Date().toLocaleString()}</p>
+            <div style="margin: 15px 0; padding: 10px; background: rgba(59, 130, 246, 0.05); border-radius: 4px;">
+                <p style="margin: 5px 0; color: #1e293b;"><strong>SharePoint Drive Link:</strong></p>
+                <a href="${driveLink || sharepointData.sharepoint_url}" target="_blank" style="color: #3b82f6; text-decoration: underline; word-break: break-all;">
+                    🔗 ${driveLink || sharepointData.sharepoint_url}
+                </a>
+            </div>
+            <div style="margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="${driveLink || sharepointData.sharepoint_url}" target="_blank" style="color: #3b82f6; text-decoration: underline; padding: 8px 16px; border: 1px solid #3b82f6; border-radius: 4px; background: rgba(59, 130, 246, 0.1);">
+                    🔗 Access SharePoint Drive
+                </a>
+                <button onclick="copyToClipboard('${driveLink || sharepointData.sharepoint_url}')" style="padding: 8px 16px; border: 1px solid #04a16d; border-radius: 4px; background: rgba(4, 161, 109, 0.1); color: #04a16d; cursor: pointer;">
+                    📋 Copy Drive Link
+                </button>
+            </div>
+        `);
+        
+        $("#db_file_status").after(infoDiv);
+    }
+
+    // Function to copy text to clipboard
+    window.copyToClipboard = function(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            // Use modern clipboard API
+            navigator.clipboard.writeText(text).then(function() {
+                // Show success message
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = "✅ Copied!";
+                button.style.background = "rgba(4, 161, 109, 0.2)";
+                button.style.borderColor = "#04a16d";
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = "rgba(4, 161, 109, 0.1)";
+                    button.style.borderColor = "#04a16d";
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+                alert('Failed to copy link to clipboard');
+            });
+        } else {
+            // Fallback for older browsers
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = "✅ Copied!";
+                button.style.background = "rgba(4, 161, 109, 0.2)";
+                button.style.borderColor = "#04a16d";
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = "rgba(4, 161, 109, 0.1)";
+                    button.style.borderColor = "#04a16d";
+                }, 2000);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert('Failed to copy link to clipboard');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+    };
+});
+
+// ====================== Form Validation (Name/Email/Phone) ======================
+const nameField = document.getElementById("lgName");
+const emailField = document.getElementById("emailId");
+const phoneField = document.getElementById("phoneNumber");
+
+const nameError = document.getElementById("nameError");
+const emailError = document.getElementById("emailError");
+const phoneError = document.getElementById("phoneError");
+
+function validateName() {
+    if (!/^[A-Za-z\s]{2,}$/.test(nameField.value.trim())) {
+        nameError.textContent = "Enter a valid name (letters only)";
+        return false;
+    }
+    nameError.textContent = "";
+    return true;
+}
+
+function validateEmail() {
+    if (!/^\S+@\S+\.\S+$/.test(emailField.value.trim())) {
+        emailError.textContent = "Enter a valid email";
+        return false;
+    }
+    emailError.textContent = "";
+    return true;
+}
+
+function validatePhone() {
+    if (!/^\d{10}$/.test(phoneField.value.trim())) {
+        phoneError.textContent = "Enter 10-digit phone";
+        return false;
+    }
+    phoneError.textContent = "";
+    return true;
+}
+
+nameField.addEventListener("input", validateName);
+emailField.addEventListener("input", validateEmail);
+phoneField.addEventListener("input", validatePhone);
+
+document.getElementById("myForm").addEventListener("submit", function(e) {
+    if (!validateName() | !validateEmail() | !validatePhone()) {
+        e.preventDefault();
     }
 });
 
