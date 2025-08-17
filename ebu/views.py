@@ -80,7 +80,7 @@ def location_selector(request):
             emailId=emailId,
             phoneNumber=phoneNumber,
         )
-
+        
         # ----- Save Excel Data -----
         excel_linkcodes = set()
         file_content = request.session.get("validated_file")
@@ -387,6 +387,10 @@ from django.http import HttpResponse
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
 import io
+import tempfile
+import os
+import json
+import pyodbc 
 
 def download_error_excel(request):
     error_excel_b64 = request.session.get("error_excel")
@@ -442,10 +446,7 @@ def validate_db_file(request):
 
         temp_file_path = None
         try:
-            import tempfile
-            import os
-            import json
-            import pyodbc  # ensure you have this installed
+            
 
             # Save uploaded file temporarily
             with tempfile.NamedTemporaryFile(delete=False, suffix='.accdb') as temp_file:
@@ -515,6 +516,7 @@ def validate_db_file(request):
                     })
 
         except Exception as e:
+            print('error:', e)
             return JsonResponse({
                 "valid": False,
                 "message": f"Error processing Access database: {str(e)}"
@@ -526,6 +528,7 @@ def validate_db_file(request):
                     os.unlink(temp_file_path)
                     print(f"Temporary file cleaned up: {temp_file_path}")
                 except Exception as cleanup_error:
+                    print('clean up error:', cleanup_error)
                     print(f"Warning: Could not clean up temporary file {temp_file_path}: {cleanup_error}")
 
     return JsonResponse({"valid": False, "message": "No file uploaded"})
@@ -538,6 +541,9 @@ def upload_db_file(request):
 
     db_file = request.FILES.get('db_file')
     adm_code = request.POST.get('admCode')
+    lg_name = request.POST.get('lgName')
+    email_id = request.POST.get('emailId')
+    phone_number = request.POST.get('phoneNumber')
 
     # Basic validations
     if not db_file or not adm_code:
@@ -559,14 +565,23 @@ def upload_db_file(request):
         saved_path = default_storage.save(relative_path, ContentFile(db_file.read()))
         file_url = os.path.join(settings.MEDIA_URL, saved_path)
 
-        # Save to model
+        # Save to DBfile model
         DBfile.objects.create(admCode=adm_code, fileUrl=file_url)
+
+        # Create new User (always create new record)
+        user_obj = User.objects.create(
+            admcode=adm_code,
+            lgName=lg_name or '',
+            emailId=email_id or '',
+            phoneNumber=phone_number or '',
+        )
 
         return JsonResponse({
             'success': True,
-            'message': 'File uploaded successfully',
+            'message': 'File uploaded and user created successfully',
             'admCode': adm_code,
-            'fileUrl': file_url
+            'fileUrl': file_url,
+            'user_id': user_obj.id
         }, status=201)
 
     except Exception as e:
@@ -574,48 +589,48 @@ def upload_db_file(request):
 
 
 
-@csrf_exempt
-def get_validation_status(request):
-    """
-    Endpoint to get the current validation status and results
-    """
-    try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        validation_output_dir = os.path.join(script_dir, "Scripts", "validation_outputs")
-        excel_file_path = os.path.join(validation_output_dir, "link_validation.xlsx")
-        metadata_file = os.path.join(validation_output_dir, "upload_metadata.json")
+# @csrf_exempt
+# def get_validation_status(request):
+#     """
+#     Endpoint to get the current validation status and results
+#     """
+#     try:
+#         script_dir = os.path.dirname(os.path.abspath(__file__))
+#         validation_output_dir = os.path.join(script_dir, "Scripts", "validation_outputs")
+#         excel_file_path = os.path.join(validation_output_dir, "link_validation.xlsx")
+#         metadata_file = os.path.join(validation_output_dir, "upload_metadata.json")
         
-        status = {
-            "validation_file_exists": os.path.exists(excel_file_path),
-            "metadata_file_exists": os.path.exists(metadata_file),
-            "validation_output_dir": validation_output_dir
-        }
+#         status = {
+#             "validation_file_exists": os.path.exists(excel_file_path),
+#             "metadata_file_exists": os.path.exists(metadata_file),
+#             "validation_output_dir": validation_output_dir
+#         }
         
-        if os.path.exists(excel_file_path):
-            # Get validation summary
-            summary, total_errors = get_validation_summary(excel_file_path)
-            status.update({
-                "total_errors": total_errors,
-                "summary": summary,
-                "validation_passed": total_errors == 0
-            })
+#         if os.path.exists(excel_file_path):
+#             # Get validation summary
+#             summary, total_errors = get_validation_summary(excel_file_path)
+#             status.update({
+#                 "total_errors": total_errors,
+#                 "summary": summary,
+#                 "validation_passed": total_errors == 0
+#             })
         
-        if os.path.exists(metadata_file):
-            with open(metadata_file, 'r') as f:
-                metadata = json.load(f)
-            status["upload_metadata"] = metadata
+#         if os.path.exists(metadata_file):
+#             with open(metadata_file, 'r') as f:
+#                 metadata = json.load(f)
+#             status["upload_metadata"] = metadata
         
-        return JsonResponse(status)
+#         return JsonResponse(status)
         
-    except Exception as e:
-        return JsonResponse({
-            "valid": False,
-            "message": f"Error getting validation status: {str(e)}"
-        })
+#     except Exception as e:
+#         return JsonResponse({
+#             "valid": False,
+#             "message": f"Error getting validation status: {str(e)}"
+#         })
 
 
-@csrf_exempt
-def download_validation_results(request):
+# @csrf_exempt
+# def download_validation_results(request):
     """
     Endpoint to download the validation results Excel file
     """

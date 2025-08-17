@@ -30,7 +30,7 @@ class User(models.Model):
     lgName = models.CharField(max_length=100)
     emailId = models.CharField(max_length=100, blank=True)
     phoneNumber = models.CharField(max_length=15)  # Changed from IntegerField
-    dbCloudLink = models.CharField(max_length=100)
+    # dbCloudLink = models.CharField(max_length=100)
 
     def __str__(self):
         return f"{self.lgName} ({self.admcode})"

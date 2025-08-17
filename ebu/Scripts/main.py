@@ -1,10 +1,9 @@
 
 
 def runValidationScript(db_path):
-    import pyodbc
-    import pandas as pd
     import os
     import sys
+    import pandas as pd
     from openpyxl import load_workbook
     from openpyxl.utils import get_column_letter
 
@@ -29,43 +28,107 @@ def runValidationScript(db_path):
     from all_table_validations.validate_code_an_unitCostsRIGID import required_columns as unit_costs_rigid_required, validate_code_an_unit_costs_rigid
     from all_table_validations.validate_code_an_unitCostsRm import required_columns as unit_costs_rm_required, validate_code_an_unit_costs_rm
     from all_table_validations.validate_code_an_unitCostsWidening import required_columns as unit_costs_widening_required, validate_code_an_unit_costs_widening
-# === Database connection ===
-    # db_path = r"C:\Users\ritik\Downloads\office wor\PKRMS Kab. MESUJI 2023.accdb"
-    print("db path ",db_path)
-    conn_str = (
-        r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-        f'DBQ={db_path};'
-    )
+
+    # === Cross-platform Database connection ===
+    print("db path ", db_path)
+    
+    # Detect operating system and use appropriate method
+    if os.name == 'nt':  # Windows
+        import pyodbc
+        conn_str = (
+            r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
+            f'DBQ={db_path};'
+        )
+        conn = pyodbc.connect(conn_str)
+        
+        def get_all_tables(conn):
+            """
+            Get all table names from the database (Windows)
+            """
+            cursor = conn.cursor()
+            tables = []
+            for row in cursor.tables():
+                if row.table_type == 'TABLE':
+                    tables.append(row.table_name)
+            cursor.close()
+            return tables
+            
+    else:  # Linux/Unix
+        import subprocess
+        import tempfile
+        
+        def get_all_tables(conn):
+            """
+            Get all table names from the database (Linux using MDBTools)
+            """
+            try:
+                result = subprocess.run(['mdb-tables', '-1', db_path], 
+                                      capture_output=True, text=True, check=True)
+                tables = [table.strip() for table in result.stdout.split('\n') if table.strip()]
+                return tables
+            except subprocess.CalledProcessError as e:
+                print(f"Error getting tables: {e}")
+                return []
+        
+        def execute_query(query, db_path):
+            """
+            Execute SQL query using MDBTools on Linux
+            """
+            try:
+                # Use mdb-sql to execute the query
+                result = subprocess.run(['mdb-sql', db_path, query], 
+                                      capture_output=True, text=True, check=True)
+                return result.stdout
+            except subprocess.CalledProcessError as e:
+                print(f"Error executing query: {e}")
+                return None
+        
+        def read_sql_query(query, db_path):
+            """
+            Read SQL query and return pandas DataFrame (Linux)
+            """
+            try:
+                # Use mdb-export to export table data
+                if 'SELECT * FROM' in query.upper():
+                    # Extract table name from SELECT * FROM [TableName]
+                    table_name = query.split('[')[1].split(']')[0]
+                    result = subprocess.run(['mdb-export', db_path, table_name], 
+                                          capture_output=True, text=True, check=True)
+                    
+                    # Parse CSV output
+                    import io
+                    df = pd.read_csv(io.StringIO(result.stdout))
+                    return df
+                else:
+                    # For other queries, use mdb-sql
+                    output = execute_query(query, db_path)
+                    if output:
+                        # Parse the output (this is a simplified approach)
+                        lines = output.strip().split('\n')
+                        if len(lines) > 1:
+                            headers = lines[0].split('|')
+                            data = [line.split('|') for line in lines[1:] if line.strip()]
+                            return pd.DataFrame(data, columns=headers)
+                    return pd.DataFrame()
+            except Exception as e:
+                print(f"Error reading SQL query: {e}")
+                return pd.DataFrame()
 
     # Output setup
     output_folder = "validation_outputs"
     os.makedirs(output_folder, exist_ok=True)
     output_excel = os.path.join(output_folder, "link_validation.xlsx")
 
-    def get_all_tables(conn):
-        """
-        Get all table names from the database
-        """
-        cursor = conn.cursor()
-        tables = []
-        for row in cursor.tables():
-            if row.table_type == 'TABLE':
-                tables.append(row.table_name)
-        cursor.close()
-        return tables
-
-
-
-
-
     try:
-        conn = pyodbc.connect(conn_str)
-
         # ---------------- LINK TABLE VALIDATION ---------------- 
         print("🔍 Starting Link table validation...")
         
         # Link table comprehensive validation
-        df_link = pd.read_sql_query("SELECT * FROM [Link]", conn)
+        if os.name == 'nt':  # Windows
+            df_link = pd.read_sql_query("SELECT * FROM [Link]", conn)
+        else:  # Linux
+            df_link = read_sql_query("SELECT * FROM [Link]", db_path)
+        
         df_link = df_link.fillna("")
         
         # Check for missing columns
@@ -115,7 +178,11 @@ def runValidationScript(db_path):
         print("🔍 Starting Alignment table validation...")
         
         # Alignment table comprehensive validation
-        df_alignment = pd.read_sql_query("SELECT * FROM [Alignment]", conn)
+        if os.name == 'nt':  # Windows
+            df_alignment = pd.read_sql_query("SELECT * FROM [Alignment]", conn)
+        else:  # Linux
+            df_alignment = read_sql_query("SELECT * FROM [Alignment]", db_path)
+        
         df_alignment = df_alignment.fillna("")
         
         # Check for missing columns
@@ -138,7 +205,11 @@ def runValidationScript(db_path):
         print("🔍 Starting RoadCondition table validation...")
         
         # RoadCondition table comprehensive validation
-        df_road_condition = pd.read_sql_query("SELECT * FROM [RoadCondition]", conn)
+        if os.name == 'nt':  # Windows
+            df_road_condition = pd.read_sql_query("SELECT * FROM [RoadCondition]", conn)
+        else:  # Linux
+            df_road_condition = read_sql_query("SELECT * FROM [RoadCondition]", db_path)
+        
         df_road_condition = df_road_condition.fillna("")
 
         # Check for missing columns
@@ -161,7 +232,11 @@ def runValidationScript(db_path):
         print("🔍 Starting RoadInventory table validation...")
         
         # RoadInventory table comprehensive validation
-        df_road_inventory = pd.read_sql_query("SELECT * FROM [RoadInventory]", conn)
+        if os.name == 'nt':  # Windows
+            df_road_inventory = pd.read_sql_query("SELECT * FROM [RoadInventory]", conn)
+        else:  # Linux
+            df_road_inventory = read_sql_query("SELECT * FROM [RoadInventory]", db_path)
+        
         df_road_inventory = df_road_inventory.fillna("")
 
         # Check for missing columns
@@ -184,7 +259,11 @@ def runValidationScript(db_path):
         print("🔍 Starting BridgeInventory table validation... (TEMPORARILY DISABLED)")
         
         # BridgeInventory table comprehensive validation
-        df_bridge_inventory = pd.read_sql_query("SELECT * FROM [BridgeInventory]", conn)
+        if os.name == 'nt':  # Windows
+            df_bridge_inventory = pd.read_sql_query("SELECT * FROM [BridgeInventory]", conn)
+        else:  # Linux
+            df_bridge_inventory = read_sql_query("SELECT * FROM [BridgeInventory]", db_path)
+        
         df_bridge_inventory = df_bridge_inventory.fillna("")
 
         # Check if table is completely empty - DISABLED FOR NOW
@@ -243,7 +322,11 @@ def runValidationScript(db_path):
         print("🔍 Starting CulvertCondition table validation...")
         
         # CulvertCondition table comprehensive validation
-        df_culvert_condition = pd.read_sql_query("SELECT * FROM [CulvertCondition]", conn)
+        if os.name == 'nt':  # Windows
+            df_culvert_condition = pd.read_sql_query("SELECT * FROM [CulvertCondition]", conn)
+        else:  # Linux
+            df_culvert_condition = read_sql_query("SELECT * FROM [CulvertCondition]", db_path)
+        
         df_culvert_condition = df_culvert_condition.fillna("")
 
         # Check for missing columns
@@ -266,7 +349,11 @@ def runValidationScript(db_path):
         print("🔍 Starting CulvertInventory table validation...")
         
         # CulvertInventory table comprehensive validation
-        df_culvert_inventory = pd.read_sql_query("SELECT * FROM [CulvertInventory]", conn)
+        if os.name == 'nt':  # Windows
+            df_culvert_inventory = pd.read_sql_query("SELECT * FROM [CulvertInventory]", conn)
+        else:  # Linux
+            df_culvert_inventory = read_sql_query("SELECT * FROM [CulvertInventory]", db_path)
+        
         df_culvert_inventory = df_culvert_inventory.fillna("")
 
         # Check for missing columns
@@ -289,7 +376,11 @@ def runValidationScript(db_path):
         print("🔍 Starting RetainingWallCondition table validation...")
         
         # RetainingWallCondition table comprehensive validation
-        df_retaining_wall_condition = pd.read_sql_query("SELECT * FROM [RetainingWallCondition]", conn)
+        if os.name == 'nt':  # Windows
+            df_retaining_wall_condition = pd.read_sql_query("SELECT * FROM [RetainingWallCondition]", conn)
+        else:  # Linux
+            df_retaining_wall_condition = read_sql_query("SELECT * FROM [RetainingWallCondition]", db_path)
+        
         df_retaining_wall_condition = df_retaining_wall_condition.fillna("")
 
         # Check for missing columns
@@ -312,7 +403,11 @@ def runValidationScript(db_path):
         print("🔍 Starting RetainingWallInventory table validation...")
         
         # RetainingWallInventory table comprehensive validation
-        df_retaining_wall_inventory = pd.read_sql_query("SELECT * FROM [RetainingWallInventory]", conn)
+        if os.name == 'nt':  # Windows
+            df_retaining_wall_inventory = pd.read_sql_query("SELECT * FROM [RetainingWallInventory]", conn)
+        else:  # Linux
+            df_retaining_wall_inventory = read_sql_query("SELECT * FROM [RetainingWallInventory]", db_path)
+        
         df_retaining_wall_inventory = df_retaining_wall_inventory.fillna("")
 
         # Check for missing columns
@@ -335,7 +430,11 @@ def runValidationScript(db_path):
         print("🔍 Starting TrafficVolume table validation...")
         
         # TrafficVolume table comprehensive validation
-        df_traffic_volume = pd.read_sql_query("SELECT * FROM [TrafficVolume]", conn)
+        if os.name == 'nt':  # Windows
+            df_traffic_volume = pd.read_sql_query("SELECT * FROM [TrafficVolume]", conn)
+        else:  # Linux
+            df_traffic_volume = read_sql_query("SELECT * FROM [TrafficVolume]", db_path)
+        
         df_traffic_volume = df_traffic_volume.fillna("")
 
         # Check for missing columns
@@ -358,7 +457,11 @@ def runValidationScript(db_path):
         print("🔍 Starting CODE_AN_UnitCostsPER table validation...")
         
         # CODE_AN_UnitCostsPER table comprehensive validation
-        df_unit_costs = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsPER]", conn)
+        if os.name == 'nt':  # Windows
+            df_unit_costs = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsPER]", conn)
+        else:  # Linux
+            df_unit_costs = read_sql_query("SELECT * FROM [CODE_AN_UnitCostsPER]", db_path)
+        
         df_unit_costs = df_unit_costs.fillna("")
 
         # Check for missing columns
@@ -381,7 +484,11 @@ def runValidationScript(db_path):
         print("🔍 Starting CODE_AN_UnitCostsPERUnpaved table validation...")
         
         # CODE_AN_UnitCostsPERUnpaved table comprehensive validation
-        df_unit_costs_unpaved = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsPERUnpaved]", conn)
+        if os.name == 'nt':  # Windows
+            df_unit_costs_unpaved = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsPERUnpaved]", conn)
+        else:  # Linux
+            df_unit_costs_unpaved = read_sql_query("SELECT * FROM [CODE_AN_UnitCostsPERUnpaved]", db_path)
+        
         df_unit_costs_unpaved = df_unit_costs_unpaved.fillna("")
 
         # Check for missing columns
@@ -404,7 +511,11 @@ def runValidationScript(db_path):
         print("🔍 Starting CODE_AN_UnitCostsREH table validation...")
         
         # CODE_AN_UnitCostsREH table comprehensive validation
-        df_unit_costs_reh = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsREH]", conn)
+        if os.name == 'nt':  # Windows
+            df_unit_costs_reh = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsREH]", conn)
+        else:  # Linux
+            df_unit_costs_reh = read_sql_query("SELECT * FROM [CODE_AN_UnitCostsREH]", db_path)
+        
         df_unit_costs_reh = df_unit_costs_reh.fillna("")
 
         # Check for missing columns
@@ -427,7 +538,11 @@ def runValidationScript(db_path):
         print("🔍 Starting CODE_AN_UnitCostsRIGID table validation...")
         
         # CODE_AN_UnitCostsRIGID table comprehensive validation
-        df_unit_costs_rigid = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsRIGID]", conn)
+        if os.name == 'nt':  # Windows
+            df_unit_costs_rigid = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsRIGID]", conn)
+        else:  # Linux
+            df_unit_costs_rigid = read_sql_query("SELECT * FROM [CODE_AN_UnitCostsRIGID]", db_path)
+        
         df_unit_costs_rigid = df_unit_costs_rigid.fillna("")
 
         # Check for missing columns
@@ -450,7 +565,11 @@ def runValidationScript(db_path):
         print("🔍 Starting CODE_AN_UnitCostsRM table validation...")
         
         # CODE_AN_UnitCostsRM table comprehensive validation
-        df_unit_costs_rm = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsRM]", conn)
+        if os.name == 'nt':  # Windows
+            df_unit_costs_rm = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsRM]", conn)
+        else:  # Linux
+            df_unit_costs_rm = read_sql_query("SELECT * FROM [CODE_AN_UnitCostsRM]", db_path)
+        
         df_unit_costs_rm = df_unit_costs_rm.fillna("")
 
         # Check for missing columns
@@ -473,7 +592,11 @@ def runValidationScript(db_path):
         print("🔍 Starting CODE_AN_UnitCostsWidening table validation...")
         
         # CODE_AN_UnitCostsWidening table comprehensive validation
-        df_unit_costs_widening = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsWidening]", conn)
+        if os.name == 'nt':  # Windows
+            df_unit_costs_widening = pd.read_sql_query("SELECT * FROM [CODE_AN_UnitCostsWidening]", conn)
+        else:  # Linux
+            df_unit_costs_widening = read_sql_query("SELECT * FROM [CODE_AN_UnitCostsWidening]", db_path)
+        
         df_unit_costs_widening = df_unit_costs_widening.fillna("")
 
         # Check for missing columns
@@ -544,7 +667,10 @@ def runValidationScript(db_path):
         print(f"   - CODE_AN_UnitCostsRM table issues: {len(invalid_df_unit_costs_rm)}")
         print(f"   - CODE_AN_UnitCostsWidening table issues: {len(invalid_df_unit_costs_widening)}")
         
-        conn.close()
+        # Close connection only on Windows
+        if os.name == 'nt' and 'conn' in locals():
+            conn.close()
+            
         return {
             "success": True,
             "message": "✅ Database validation completed successfully!",
@@ -569,14 +695,14 @@ def runValidationScript(db_path):
             }
         }
 
-    except pyodbc.Error as e:
-        print("Database error:", e)
-        return {
-            "success": False,
-            "message": f"Database connection error: {str(e)}"
-        }
     except Exception as ex:
         print("Error:", ex)
+        # Close connection on error only on Windows
+        if os.name == 'nt' and 'conn' in locals():
+            try:
+                conn.close()
+            except:
+                pass
         return {
             "success": False,
             "message": f"Validation error: {str(ex)}"

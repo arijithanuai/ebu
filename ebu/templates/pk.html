@@ -909,6 +909,7 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
             body: formData
         })
         .then(response => {
+            console.log("Response status:", response    ); // Debug log
             if (response.headers.get('content-type') && response.headers.get('content-type').includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
                 // Excel file returned - show error message with download button
                 return response.blob().then(blob => {
