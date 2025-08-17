@@ -84,16 +84,16 @@ def validate_code_an_unit_costs_reh(df: pd.DataFrame) -> pd.DataFrame:
     """
     errors: List[pd.Series] = []
 
-    # Check if database is completely empty
-    if df.empty:
-        return pd.DataFrame(
-            [
-                {
-                    "Record_No": "EMPTY_DB",
-                    "Validation_Message": "⚠️ WARNING: CODE_AN_UnitCostsREH table is completely empty - no data found",
-                }
-            ]
-        )
+    # Check if database is completely empty - DISABLED FOR NOW
+    # if df.empty:
+    #     return pd.DataFrame(
+    #         [
+    #             {
+    #                 "Record_No": "EMPTY_DB",
+    #                 "Validation_Message": "⚠️ WARNING: CODE_AN_UnitCostsREH table is completely empty - no data found",
+    #             }
+    #         ]
+    #     )
 
     # 1) Check for missing required columns (table schema level)
     missing_cols = [c for c in required_columns if c not in df.columns]

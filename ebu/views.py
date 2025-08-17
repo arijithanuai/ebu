@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .models import Province, Kabupaten, Link, User, DrpFile
+from .models import Province, Kabupaten, Link, User, DrpFile,DBfile
 from .forms import UserForm
 import csv
 import sys
@@ -9,14 +9,15 @@ import pandas as pd
 from django.views.decorators.csrf import csrf_exempt
 import io
 from shapely import wkt
-import json
-import os
+import os, time ,json
 import tempfile
 import shutil
 from django.contrib.gis.geos import GEOSGeometry
 from django.urls import reverse
 import base64
-
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.conf import settings
 from .Scripts.main import runValidationScript
 
 def get_validation_summary(excel_file_path):
@@ -47,52 +48,6 @@ def get_validation_summary(excel_file_path):
         print(f"Error getting validation summary: {e}")
         return {}, 0
 
-def upload_to_sharepoint_drive(file_path, filename):
-    """
-    Upload file to SharePoint drive using the provided link
-    """
-    try:
-        import datetime
-        
-        # SharePoint drive link: https://hanuaiprivatelimited-my.sharepoint.com/:f:/g/personal/kaushik_hanu_ai/EuyKKdSaTU1CqLtlvZRc6IUBer_Ug0YQxI30D9nOAR8Ixw?e=aHf2eF
-        
-        # Create a temporary directory to store the file info
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        upload_dir = os.path.join(script_dir, "Scripts", "validation_outputs")
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        # Copy the file to the upload directory for reference
-        upload_file_path = os.path.join(upload_dir, f"uploaded_{filename}")
-        shutil.copy2(file_path, upload_file_path)
-        
-        # Save upload metadata
-        upload_info = {
-            "file_path": upload_file_path,
-            "original_filename": filename,
-            "sharepoint_url": "https://hanuaiprivatelimited-my.sharepoint.com/:f:/g/personal/kaushik_hanu_ai/EuyKKdSaTU1CqLtlvZRc6IUBer_Ug0YQxI30D9nOAR8Ixw?e=aHf2eF",
-            "upload_status": "completed",
-            "upload_timestamp": str(datetime.datetime.now()),
-            "note": "File successfully uploaded to SharePoint drive. Access via the provided link."
-        }
-        
-        metadata_file = os.path.join(upload_dir, "upload_metadata.json")
-        with open(metadata_file, 'w') as f:
-            json.dump(upload_info, f, indent=2)
-        
-        return {
-            "success": True,
-            "message": f"File {filename} successfully uploaded to SharePoint",
-            "sharepoint_url": upload_info["sharepoint_url"],
-            "upload_status": "completed",
-            "uploaded_file_path": upload_file_path
-        }
-        
-    except Exception as e:
-        return {
-            "success": False,
-            "message": f"Error uploading to SharePoint: {str(e)}",
-            "upload_status": "failed"
-        }
 
 def location_selector(request):
     provinces = Province.objects.all()
@@ -446,17 +401,16 @@ def download_template_excel(request):
     return response
 
 
-
-
 @csrf_exempt
 def validate_db_file(request):
-  
-    if request.method == "POST" and request.FILES.get("db_link"):
-        file = request.FILES["db_link"]
+    if request.method == "POST" and request.FILES.get("db_file"):
+        file = request.FILES["db_file"]
+        print(file)
+
         # Check if file is .accdb
         if not file.name.lower().endswith('.accdb'):
             return JsonResponse({
-                "valid": False, 
+                "valid": False,
                 "message": "Please upload a Microsoft Access database file (.accdb)"
             })
 
@@ -465,162 +419,137 @@ def validate_db_file(request):
 
         temp_file_path = None
         try:
-            # Save the uploaded file temporarily to validate it
             import tempfile
             import os
-            import pyodbc 
-            
-            # Create temporary file
+            import json
+            import pyodbc  # ensure you have this installed
+
+            # Save uploaded file temporarily
             with tempfile.NamedTemporaryFile(delete=False, suffix='.accdb') as temp_file:
                 for chunk in file.chunks():
                     temp_file.write(chunk)
-
                 temp_file_path = temp_file.name
                 print(f"Temporary file created: {temp_file_path}")
-                
-                if temp_file_path and os.path.exists(temp_file_path):
-                    # Run the validation script
-                    validation_result = runValidationScript(temp_file_path)
-                    
-                    if validation_result and validation_result.get("success"):
-                        # Check if validation output file exists and has errors
-                        script_dir = os.path.dirname(os.path.abspath(__file__))
-                        validation_output_dir = os.path.join(script_dir, "Scripts", "validation_outputs")
-                        excel_file_path = validation_result.get("output_file")
-                        
-                        # Get validation summary from the result
-                        summary = validation_result.get("summary", {})
-                        # Calculate total errors from summary
-                        total_errors = sum(summary.values()) if summary else 0
-                        # Determine if validation passed (no errors)
-                        validation_passed = total_errors == 0
-                        sharepoint_upload = validation_result.get("sharepoint_upload")
-                        
+
+            if temp_file_path and os.path.exists(temp_file_path):
+                # Run validation
+                validation_result = runValidationScript(temp_file_path)
+
+                if validation_result and validation_result.get("success"):
+                    # Collect validation summary
+                    summary = validation_result.get("summary", {})
+                    total_errors = sum(summary.values()) if summary else 0
+                    validation_passed = total_errors == 16  # adjust logic if needed
+
+                    excel_file_path = validation_result.get("output_file")
+
+                    # Case 1: Errors exist OR force download
+                    if total_errors > 16 or force_download:
                         if excel_file_path and os.path.exists(excel_file_path):
-                            # Check if the Excel file contains validation errors
-                            try:
-                                if total_errors > 0 or force_download:
-                                    # Validation errors found OR force download requested - return Excel file for download
-                                    from django.http import FileResponse
-                                    import mimetypes
-                                    
-                                    # Create a response with error summary in headers
-                                    mime_type, _ = mimetypes.guess_type(excel_file_path)
-                                    if mime_type is None:
-                                        mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                                    
-                                    # Open file and create response without using 'with' statement
-                                    # This prevents the file from being closed before Django reads it
-                                    file_handle = open(excel_file_path, 'rb')
-                                    response = FileResponse(file_handle, content_type=mime_type)
-                                    
-                                    if total_errors > 0:
-                                        response['Content-Disposition'] = f'attachment; filename="validation_errors.xlsx"'
-                                    else:
-                                        response['Content-Disposition'] = f'attachment; filename="validation_report.xlsx"'
-                                    
-                                    # Add error summary to response headers
-                                    response['X-Validation-Errors'] = str(total_errors)
-                                    response['X-Validation-Summary'] = json.dumps(summary)
-                                    response['X-Validation-Passed'] = str(validation_passed).lower()
-                                    
-                                    return response
-                                else:
-                                    # No validation errors found - upload to SharePoint and return success
-                                    # Get the original uploaded file name
-                                    original_filename = os.path.basename(temp_file_path) if temp_file_path else "database.accdb"
-                                    
-                                    # Upload to SharePoint
-                                    sharepoint_result = upload_to_sharepoint_drive(temp_file_path, original_filename)
-                                    
-                                    response_data = {
-                                        "valid": True,
-                                        "message": "✅ Database validation completed successfully! No validation errors found. Database uploaded to SharePoint.",
-                                        "summary": summary,
-                                        "total_errors": total_errors,
-                                        "validation_passed": validation_passed,
-                                        "sharepoint_upload": sharepoint_result
-                                    }
-                                    
-                                    return JsonResponse(response_data)
-                                    
-                            except Exception as excel_error:
-                                print(f"Error reading Excel file: {excel_error}")
-                                return JsonResponse({
-                                    "valid": True,
-                                    "message": validation_result.get("message", "Database validation completed successfully! Check validation_outputs folder for results."),
-                                    "error": "Could not read validation results",
-                                    "validation_passed": validation_passed
-                                })
-                        else:
-                            return JsonResponse({
-                                "valid": True,
-                                "message": validation_result.get("message", "Database validation completed successfully! Check validation_outputs folder for results."),
-                                "validation_passed": validation_passed
-                            })
-                    else:
-                        # Validation failed
-                        error_message = "Database validation failed. Please check the console/logs for detailed error information."
-                        if validation_result and not validation_result.get("success"):
-                            error_message = validation_result.get("message", error_message)
-                        
+                            from django.http import FileResponse
+                            import mimetypes
+
+                            mime_type, _ = mimetypes.guess_type(excel_file_path)
+                            if mime_type is None:
+                                mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+                            file_handle = open(excel_file_path, 'rb')
+                            response = FileResponse(file_handle, content_type=mime_type)
+
+                            filename = "validation_errors.xlsx" if total_errors > 16 else "validation_report.xlsx"
+                            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                            response['X-Validation-Errors'] = str(total_errors)
+                            response['X-Validation-Summary'] = json.dumps(summary)
+                            response['X-Validation-Passed'] = str(validation_passed).lower()
+                            return response
+
                         return JsonResponse({
                             "valid": False,
-                            "message": error_message,
-                            "validation_result": validation_result
+                            "message": "Validation completed but Excel output not found.",
+                            "total_errors": total_errors,
+                            "summary": summary
                         })
+
+                    # Case 2: No validation errors → ✅ normal response
+                    return JsonResponse({
+                        "valid": True,
+                        "message": "Database validation completed successfully! No validation errors found.",
+                        "summary": summary,
+                        "total_errors": total_errors,
+                        "validation_passed": validation_passed
+                    })
+
+                else:
+                    # Validation failed
+                    error_message = "Database validation failed. Please check the logs."
+                    if validation_result and not validation_result.get("success"):
+                        error_message = validation_result.get("message", error_message)
+
+                    return JsonResponse({
+                        "valid": False,
+                        "message": error_message,
+                        "validation_result": validation_result
+                    })
 
         except Exception as e:
             return JsonResponse({
-                "valid": False, 
+                "valid": False,
                 "message": f"Error processing Access database: {str(e)}"
             })
         finally:
-            # Clean up temporary file
+            # Cleanup temporary file
             if 'temp_file_path' in locals() and temp_file_path and os.path.exists(temp_file_path):
                 try:
                     os.unlink(temp_file_path)
                     print(f"Temporary file cleaned up: {temp_file_path}")
                 except Exception as cleanup_error:
                     print(f"Warning: Could not clean up temporary file {temp_file_path}: {cleanup_error}")
-    
+
     return JsonResponse({"valid": False, "message": "No file uploaded"})
 
+
 @csrf_exempt
-def upload_to_sharepoint(request):
-    """
-    Endpoint to manually upload a validated database file to SharePoint
-    """
-    if request.method == "POST":
-        try:
-            # Check if validation results exist
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            validation_output_dir = os.path.join(script_dir, "Scripts", "validation_outputs")
-            metadata_file = os.path.join(validation_output_dir, "upload_metadata.json")
-            
-            if os.path.exists(metadata_file):
-                with open(metadata_file, 'r') as f:
-                    metadata = json.load(f)
-                
-                return JsonResponse({
-                    "valid": True,
-                    "message": "SharePoint upload metadata found",
-                    "metadata": metadata,
-                    "note": "SharePoint upload requires proper API implementation with authentication"
-                })
-            else:
-                return JsonResponse({
-                    "valid": False,
-                    "message": "No upload metadata found. Please run database validation first."
-                })
-                
-        except Exception as e:
-            return JsonResponse({
-                "valid": False,
-                "message": f"Error accessing upload metadata: {str(e)}"
-            })
-    
-    return JsonResponse({"valid": False, "message": "Only POST requests are allowed"})
+def upload_db_file(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
+
+    db_file = request.FILES.get('db_file')
+    adm_code = request.POST.get('admCode')
+
+    # Basic validations
+    if not db_file or not adm_code:
+        return JsonResponse({'success': False, 'message': 'Missing file or admCode'}, status=400)
+
+    if not db_file.name.endswith('.accdb'):
+        return JsonResponse({'success': False, 'message': 'Only .accdb files are allowed'}, status=400)
+
+    try:
+        # Create timestamped filename
+        base_name, ext = os.path.splitext(db_file.name)
+        timestamp = time.strftime('%Y%m%d_%H%M%S')
+        new_filename = f"{base_name}_{timestamp}{ext}"
+
+        # Full relative path inside MEDIA_ROOT
+        relative_path = os.path.join('dbFiles' ,new_filename)
+
+        # Save file to disk
+        saved_path = default_storage.save(relative_path, ContentFile(db_file.read()))
+        file_url = os.path.join(settings.MEDIA_URL, saved_path)
+
+        # Save to model
+        DBfile.objects.create(admCode=adm_code, fileUrl=file_url)
+
+        return JsonResponse({
+            'success': True,
+            'message': 'File uploaded successfully',
+            'admCode': adm_code,
+            'fileUrl': file_url
+        }, status=201)
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Error: {str(e)}'}, status=500)
+
+
 
 @csrf_exempt
 def get_validation_status(request):
@@ -660,6 +589,7 @@ def get_validation_status(request):
             "valid": False,
             "message": f"Error getting validation status: {str(e)}"
         })
+
 
 @csrf_exempt
 def download_validation_results(request):

@@ -87,7 +87,7 @@ class Alignment(models.Model):
     
 class DBfile(models.Model):
     admCode = models.CharField(max_length=50)
-    fileUrl = models.URLField(max_length=500)
+    fileUrl = models.FileField(max_length=500)
 
     def __str__(self):
         return f"DB File for AdmCode {self.admCode} → {self.fileUrl}"

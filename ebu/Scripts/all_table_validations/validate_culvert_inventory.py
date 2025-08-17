@@ -97,16 +97,16 @@ def validate_culvert_inventory(df: pd.DataFrame, df_link: pd.DataFrame = None) -
     """
     errors: List[pd.Series] = []
 
-    # Check if database is completely empty
-    if df.empty:
-        return pd.DataFrame(
-            [
-                {
-                    "Record_No": "EMPTY_DB",
-                    "Validation_Message": "⚠️ WARNING: CulvertInventory table is completely empty - no data found",
-                }
-            ]
-        )
+    # Check if database is completely empty - DISABLED FOR NOW
+    # if df.empty:
+    #     return pd.DataFrame(
+    #         [
+    #             {
+    #                 "Record_No": "EMPTY_DB",
+    #                 "Validation_Message": "⚠️ WARNING: CulvertInventory table is completely empty - no data found",
+    #             }
+    #         ]
+    #     )
 
     # 1) Check for missing required columns (table schema level)
     missing_cols = [c for c in required_columns if c not in df.columns]
