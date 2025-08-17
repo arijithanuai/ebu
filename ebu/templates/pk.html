@@ -253,7 +253,7 @@
         font-size:14px;
         border: 1px solid #ef4444;
       }
-#db-link-section{
+#db-section{
         max-width: 500px;
       }
       /* Disabled Buttons */
@@ -433,6 +433,7 @@ $(document).ready(function () {
     let txtMatchedCount = 0;
     let excelValidated = false;
     let txtValidated = false;
+    let excelCount = 0;
 
     // Initially hide sections
     $("#map-section").addClass("hidden");
@@ -448,7 +449,7 @@ $(document).ready(function () {
         
         if (hasDbFile === "yes") {
             // Check if DB file is actually selected
-            const dbFileInput = $("#db_link")[0];
+            const dbFileInput = $("#db_file")[0];
             const hasDbFileSelected = dbFileInput && dbFileInput.files.length > 0;
             $("button[type=submit]").prop("disabled", !hasDbFileSelected);
         } else if (hasDbFile === "no") {
@@ -561,17 +562,14 @@ $(document).ready(function () {
             checkIfReadyToSubmit();
         } else {
             $("#link-excel-section").removeClass("hidden");
-            $("#db-link-section").addClass("hidden");
-            $("#db_link").val("");
+            $("#db-section").addClass("hidden");
+            $("#db_file").val("");
             // Check if ready to submit based on file validations
             checkIfReadyToSubmit();
         }
     });
 
-    // DB file selection change
-    $("#db_link").on("change", function () {
-        checkIfReadyToSubmit();
-    });
+
 
     // Show Excel upload btn
     $("#link_excel").on("change", function () {
@@ -722,7 +720,7 @@ $(document).ready(function () {
         // Check if user has DB file or needs to validate Excel/TXT
         if (hasDbFile === "yes") {
             // Check if DB file is actually selected
-            const dbFileInput = $("#db_link")[0];
+            const dbFileInput = $("#db_file")[0];
             if (!dbFileInput || !dbFileInput.files.length) {
                 e.preventDefault();
                 alert("Please select a DB file before submitting.");
@@ -763,15 +761,30 @@ $(document).ready(function () {
 
     // ====================== DB File Submission Handler ======================
     // DB file selection change - just enable/disable submit button
-    $("#db_link").on("change", function() {
+    $("#db_file").on("change", function() {
         checkIfReadyToSubmit();
+    });
+
+    // Validate DB button click handler
+    $("#upload_db_btn").on("click", function() {
+        const dbFileInput = $("#db_file")[0];
+        if (!dbFileInput || !dbFileInput.files.length) {
+            alert("Please select a DB file first");
+            return;
+        }
+
+        // Show processing message
+        showDbFileStatus("Processing database file...", "processing");
+        
+        // Submit DB file for validation
+        submitDbFileForValidation(dbFileInput.files[0]);
     });
 
 
 
     function submitDbFileForValidation(file) {
         const formData = new FormData();
-        formData.append("db_link", file);
+        formData.append("db_file", file);
         formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
         fetch("{% url 'validate_db_file' %}", {
@@ -782,7 +795,7 @@ $(document).ready(function () {
             if (response.headers.get('content-type') && response.headers.get('content-type').includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
                 // Excel file returned - show error message with download button
                 return response.blob().then(blob => {
-                    showDbFileStatus("❌ Database validation failed! The database contains errors in data. Please view the Excel file for detailed information.", "error");
+                    showDbFileStatus(" Database validation failed! The database contains errors in data. Please view the Excel file for detailed information.", "error");
                     showExcelDownloadButton(blob, response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'validation_results.xlsx');
                 });
             } else {
@@ -791,16 +804,10 @@ $(document).ready(function () {
             }
         })
         .then(data => {
+            console.log("Database validation response:", data); // Debug log
             if (data && typeof data === 'object') {
                 if (data.valid) {
-                    if (data.sharepoint_upload && data.sharepoint_upload.success) {
-                        // Success - file uploaded to SharePoint
-                        showDbFileStatus("✅ Database validation completed successfully! File uploaded to SharePoint drive.", "success");
-                        showSharePointInfo(data.sharepoint_upload);
-                    } else {
-                        // Success - no errors
-                        showDbFileStatus("✅ Database validation completed successfully! No errors found.", "success");
-                    }
+                      showDbFileStatus("Database validation completed successfully! No errors found.", "success");
                 } else {
                     // Validation failed
                     showDbFileStatus(`❌ ${data.message}`, "error");
@@ -880,7 +887,7 @@ $(document).ready(function () {
                 break;
         }
         
-        $("#db-link-section").after(statusDiv);
+        $("#db-section").after(statusDiv);
     }
 
     function showExcelDownloadButton(blob, filename) {
@@ -912,7 +919,7 @@ $(document).ready(function () {
         $("#db_file_status").after(downloadBtn);
     }
 
-    function showSharePointInfo(sharepointData) {
+    function showSharePointInfo(sharepointData, driveLink, fileName) {
         // Remove existing SharePoint info if any
         $("#sharepoint_info").remove();
         
@@ -928,16 +935,81 @@ $(document).ready(function () {
         
         infoDiv.html(`
             <h4 style="color: #3b82f6; margin: 0 0 10px 0;">📁 SharePoint Upload Successful</h4>
-            <p style="margin: 5px 0; color: #1e293b;"><strong>File:</strong> ${sharepointData.original_filename || 'database.accdb'}</p>
+            <p style="margin: 5px 0; color: #1e293b;"><strong>File:</strong> ${fileName || sharepointData.original_filename || 'database.accdb'}</p>
             <p style="margin: 5px 0; color: #1e293b;"><strong>Status:</strong> ${sharepointData.upload_status}</p>
             <p style="margin: 5px 0; color: #1e293b;"><strong>Upload Time:</strong> ${new Date().toLocaleString()}</p>
-            <a href="${sharepointData.sharepoint_url}" target="_blank" style="color: #3b82f6; text-decoration: underline;">
-                🔗 Access SharePoint Drive
-            </a>
+            <div style="margin: 15px 0; padding: 10px; background: rgba(59, 130, 246, 0.05); border-radius: 4px;">
+                <p style="margin: 5px 0; color: #1e293b;"><strong>SharePoint Drive Link:</strong></p>
+                <a href="${driveLink || sharepointData.sharepoint_url}" target="_blank" style="color: #3b82f6; text-decoration: underline; word-break: break-all;">
+                    🔗 ${driveLink || sharepointData.sharepoint_url}
+                </a>
+            </div>
+            <div style="margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="${driveLink || sharepointData.sharepoint_url}" target="_blank" style="color: #3b82f6; text-decoration: underline; padding: 8px 16px; border: 1px solid #3b82f6; border-radius: 4px; background: rgba(59, 130, 246, 0.1);">
+                    🔗 Access SharePoint Drive
+                </a>
+                <button onclick="copyToClipboard('${driveLink || sharepointData.sharepoint_url}')" style="padding: 8px 16px; border: 1px solid #04a16d; border-radius: 4px; background: rgba(4, 161, 109, 0.1); color: #04a16d; cursor: pointer;">
+                    📋 Copy Drive Link
+                </button>
+            </div>
         `);
         
         $("#db_file_status").after(infoDiv);
     }
+
+    // Function to copy text to clipboard
+    window.copyToClipboard = function(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            // Use modern clipboard API
+            navigator.clipboard.writeText(text).then(function() {
+                // Show success message
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = "✅ Copied!";
+                button.style.background = "rgba(4, 161, 109, 0.2)";
+                button.style.borderColor = "#04a16d";
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = "rgba(4, 161, 109, 0.1)";
+                    button.style.borderColor = "#04a16d";
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+                alert('Failed to copy link to clipboard');
+            });
+        } else {
+            // Fallback for older browsers
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = "✅ Copied!";
+                button.style.background = "rgba(4, 161, 109, 0.2)";
+                button.style.borderColor = "#04a16d";
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = "rgba(4, 161, 109, 0.1)";
+                    button.style.borderColor = "#04a16d";
+                }, 2000);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert('Failed to copy link to clipboard');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+    };
 });
 
 // ====================== Form Validation (Name/Email/Phone) ======================
