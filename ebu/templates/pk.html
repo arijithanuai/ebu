@@ -558,7 +558,7 @@ $(document).ready(function () {
                             );
                         });
 
-                        // ✅ Preselect kabupaten agar URL me diya ho
+                        //  Preselect kabupaten agar URL me diya ho
                         const preKab = "{{ preselect_kabupaten|default:'' }}";
                         if (preKab) {
                             $("#kabupaten").val(preKab).trigger("change");
@@ -597,10 +597,10 @@ $(document).ready(function () {
     // -------------------- DB file toggle --------------------
 $('input[name="has_db_file"]').on("change", function () {
     if ($(this).val() === "yes") {
-        // ✅ Show only DB file section
+        //  Show only DB file section
         $("#db-section").removeClass("hidden");
 
-        // ✅ Hide everything else
+        //  Hide everything else
         $("#link-excel-section").addClass("hidden");
         $("#map-section").addClass("hidden");
         $("#drp-section").addClass("hidden");
@@ -614,7 +614,7 @@ $('input[name="has_db_file"]').on("change", function () {
         $("button[type=submit]").prop("disabled", true);
 
     } else {
-        // ✅ Show Excel workflow
+        //  Show Excel workflow
         $("#link-excel-section").removeClass("hidden");
         $("#db-section").addClass("hidden");
         $("#map-section").addClass("hidden");
@@ -927,13 +927,13 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
                       showDbFileStatus("Database validation completed successfully! No errors found.", "success");
                 } else {
                     // Validation failed
-                    showDbFileStatus(`❌ ${data.message}`, "error");
+                    showDbFileStatus(` ${data.message}`, "error");
                 }
             }
         })
         .catch(error => {
             console.error("Error:", error);
-            showDbFileStatus("❌ Error processing database file. Please try again.", "error");
+            showDbFileStatus(" Error processing database file. Please try again.", "error");
         });
     }
 
@@ -985,7 +985,7 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
                     "align-items": "center",
                     "gap": "10px"
                 });
-                statusDiv.html(`<span style="font-size: 18px;">✅</span> <span>${message}</span>`);
+                statusDiv.html(`<span style="font-size: 18px;"></span> <span>${message}</span>`);
                 break;
             case "error":
                 statusDiv.css({
@@ -1000,7 +1000,7 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
                     "align-items": "center",
                     "gap": "10px"
                 });
-                statusDiv.html(`<span style="font-size: 18px;">❌</span> <span>${message}</span>`);
+                statusDiv.html(`<span style="font-size: 18px;"></span> <span>${message}</span>`);
                 break;
         }
         
@@ -1082,7 +1082,7 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
                 // Show success message
                 const button = event.target;
                 const originalText = button.innerHTML;
-                button.innerHTML = "✅ Copied!";
+                button.innerHTML = " Copied!";
                 button.style.background = "rgba(4, 161, 109, 0.2)";
                 button.style.borderColor = "#04a16d";
                 
@@ -1110,7 +1110,7 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
                 document.execCommand('copy');
                 const button = event.target;
                 const originalText = button.innerHTML;
-                button.innerHTML = "✅ Copied!";
+                button.innerHTML = " Copied!";
                 button.style.background = "rgba(4, 161, 109, 0.2)";
                 button.style.borderColor = "#04a16d";
                 

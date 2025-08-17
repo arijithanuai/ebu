@@ -493,7 +493,7 @@ def validate_db_file(request):
                             "summary": summary
                         })
 
-                    # Case 2: No validation errors → ✅ normal response
+                    # Case 2: No validation errors →  normal response
                     return JsonResponse({
                         "valid": True,
                         "message": "Database validation completed successfully! No validation errors found.",
