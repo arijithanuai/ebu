@@ -36,6 +36,7 @@ class User(models.Model):
         return f"{self.lgName} ({self.admcode})"
     
     class Meta: 
+        
         db_table = 'user'
 
 
@@ -84,19 +85,22 @@ class Alignment(models.Model):
         db_table = 'alignment'
         
     
-    
-# def drp_upload_path(instance, filename):
-#     ext = filename.split('.')[-1]  # get original extension
-#     return f"drp_files/{instance.admCode}.{ext}"  # rename to admCode.ext
+class DBfile(models.Model):
+    admCode = models.CharField(max_length=50)
+    fileUrl = models.URLField(max_length=500)
 
-# class drp(models.Model):
-#     admCode = models.CharField(max_length=20)
-#     drpFile = models.FileField(upload_to=drp_upload_path)
+    def __str__(self):
+        return f"DB File for AdmCode {self.admCode} → {self.fileUrl}"
 
-#     def __str__(self):
-#         return f"DRP for {self.admCode}"
-    
-#     class Meta:
-#         db_table = 'drp'
-#         verbose_name_plural = 'DRP Files'
-    
+    class Meta:
+        db_table = 'dbfile'
+
+class DrpFile(models.Model):
+    admCode = models.CharField(max_length=50)
+    drpFile = models.FileField(upload_to="drp_files/")   # saves file in MEDIA_ROOT/drp_files/
+
+    def __str__(self):
+        return f"DRP File for AdmCode {self.admCode}: {self.drpFile.name}"
+
+    class Meta:
+        db_table = 'drpfile'

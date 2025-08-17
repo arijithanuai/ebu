@@ -375,57 +375,54 @@
         </div>
 
         <!-- DB File Question -->
-        <div class="db-file-container">
-          <label>Do you have a DB file?</label>
-          <div class="db-file-input">
-            <label>
-              <input type="radio" name="has_db_file" value="yes" /> Yes
-            </label>
-            <label>
-              <input type="radio" name="has_db_file" value="no" /> No
-            </label>
-          </div>
-
-          <!-- DB Cloud Link Field -->
-          <div id="db-link-section" class="hidden">
-            <label for="db_link">DB Cloud Link:</label>
-            <input type="file" name="db_link" id="db_link" />
-          </div>
+        <div class="db-file-conatiner">
+        <label>Do you have a DB file?</label>
+        <div class="db-file-input">
+            <label><input type="radio" name="has_db_file" value="yes" /> Yes</label>
+            <label><input type="radio" name="has_db_file" value="no" /> No</label>
+        </div>
         </div>
 
         <!-- Link Excel -->
         <div id="link-excel-section" class="hidden" style="margin-top: 10px">
-          <div class="file-upload-section">
-            
-            <!-- Excel Upload -->
-            <div class="upload-section"> 
-              <label for="link_excel">Link Excel File:</label>
-              <input type="file" name="link_excel" id="link_excel" accept=".xlsx,.xls" />
-              <div id="link_excel_msg"></div>
-              <button type="button" id="upload_link_btn" class="hidden">Validate Excel</button>
-            </div>
-
-            <!-- Map TXT -->
-            <div class="upload-section">
-              <label for="map_txt">Alignment TXT File:</label>
-              <input type="file" name="map_txt" id="map_txt" accept=".txt" />
-              <div id="map_txt_status"></div>
-              <button type="button" id="upload_map_txt" class="hidden">Validate TXT</button>
-            </div>
-
-            <!-- DRP -->
-            <div class="upload-section">
-              <label for="drp">DRP:</label>
-              <input type="file" name="link_drpexcel" id="drp" />
-            </div>
-
-          </div>
+        <div class="upload-section"> 
+            <label for="link_excel">Link Excel File</label>
+            <input type="file" name="link_excel" id="link_excel" accept=".xlsx,.xls" />
+            <div id="link_excel_msg"></div>
+            <button type="button" id="upload_link_btn" class="hidden">Validate Excel</button>
+            <button id="download_error_excel" type="button" class="hidden bg-red-500 text-white px-3 py-1 rounded mt-2">Download Errors Excel</button>
+            <button id="download_template_excel" type="button" class="hidden bg-blue-500 text-white px-3 py-1 rounded mt-2">Download Template Excel</button>
+        </div>
         </div>
 
-        <!-- Submit Button -->
+        <!-- Map TXT -->
+        <div id="map-section" class="hidden upload-section" style="margin-top: 10px">
+        <label for="map_txt">Alignment TXT File*</label>
+        <input type="file" name="map_txt" id="map_txt" accept=".txt" />
+        <div id="map_txt_status"></div>
+        <button type="button" id="upload_map_txt" class="hidden">Validate TXT</button>
+        </div>
+
+        <!-- DRP -->
+        <div id="drp-section" class="hidden upload-section" style="margin-top: 10px">
+        <label for="drp">DRP:</label>
+        <input type="file" name="link_drpexcel" id="drp" />
+        </div>
+
+        <!-- DB Upload Section -->
+        <div id="db-section" class="hidden upload-section" style="margin-top: 10px">
+        <label for="db_file">Upload DB File:</label>
+        <input type="file" id="db_file" name="db_file" accept=".accdb" />
+        <div id="db_status"></div>
+        <button type="button" id="upload_db_btn">Validate DB</button>
+        </div>
+
+
+        <!-- Submit -->
         <div class="upload-btn">
-          <button type="submit">Upload</button>
+        <button type="submit" id="submitBtn" disabled>Upload</button>
         </div>
+
       </form>
     </div>
   </div>
@@ -433,14 +430,18 @@
 
 <script>
 $(document).ready(function () {
+    let txtMatchedCount = 0;
     let excelValidated = false;
     let txtValidated = false;
-    let excelCount = 0;
-    let txtMatchedCount = 0;
 
-    // Initially disable TXT and Submit
+    // Initially hide sections
+    $("#map-section").addClass("hidden");
+    $("#drp-section").addClass("hidden");
     $("#map_txt").prop("disabled", true);
     $("button[type=submit]").prop("disabled", true);
+
+    $("#download_error_excel").hide();
+    $("#download_template_excel").hide();
 
     function checkIfReadyToSubmit() {
         const hasDbFile = $('input[name="has_db_file"]:checked').val();
@@ -554,7 +555,7 @@ $(document).ready(function () {
     // DB file toggle
     $('input[name="has_db_file"]').on("change", function () {
         if ($(this).val() === "yes") {
-            $("#db-link-section").removeClass("hidden");
+            $("#db-section").removeClass("hidden");
             $("#link-excel-section").addClass("hidden");
             // Check if ready to submit (button will be disabled until file is selected)
             checkIfReadyToSubmit();
@@ -577,7 +578,7 @@ $(document).ready(function () {
         $("#upload_link_btn").show();
     });
 
-    // Excel Upload
+    // Excel Upload Validation
     $("#upload_link_btn").on("click", function () {
         let fileInput = $("#link_excel")[0];
         if (!fileInput.files.length) {
@@ -585,16 +586,10 @@ $(document).ready(function () {
             return;
         }
 
-        // Show processing message (orange style)
         $("#link_excel_msg")
             .show()
             .html("Processing...")
-            .css({
-                "color": "orange",
-                "background": "rgba(255, 165, 0, 0.1)",
-                "font-size": "14px",
-                "border": "1px solid orange"
-            });
+            .css({ "color": "orange", "background": "rgba(255,165,0,0.1)", "border": "1px solid orange" });
 
         let formData = new FormData();
         formData.append("link_excel", fileInput.files[0]);
@@ -604,6 +599,10 @@ $(document).ready(function () {
         fetch("{% url 'validate_link_excel' %}", { method: "POST", body: formData })
             .then(res => res.json())
             .then(data => {
+                // Reset download buttons
+                $("#download_error_excel").hide();
+                $("#download_template_excel").hide();
+
                 $("#link_excel_msg")
                     .html(data.message)
                     .css({
@@ -613,19 +612,42 @@ $(document).ready(function () {
                     });
 
                 excelValidated = data.valid;
+
                 if (data.valid) {
-                    excelCount = data.count || 0;
+                    $("#map-section").removeClass("hidden");
                     $("#map_txt").prop("disabled", false);
                 } else {
+                    $("#map-section").addClass("hidden");
                     $("#map_txt").prop("disabled", true);
                     txtValidated = false;
+
+                    // If row-level errors exist
+                    if (data.error_excel_url) {
+                        $("#download_error_excel")
+                            .show()
+                            .off("click")
+                            .on("click", function () {
+                                window.location.href = data.error_excel_url;
+                            });
+                    }
+
+                    // If schema error exists
+                    if (data.template_excel_url) {
+                        $("#download_template_excel")
+                            .show()
+                            .off("click")
+                            .on("click", function () {
+                                window.location.href = data.template_excel_url;
+                            });
+                    }
                 }
                 checkIfReadyToSubmit();
             })
             .catch(err => alert(`Error uploading file: ${err.message || err}`));
     });
 
-    // TXT Upload
+
+     // TXT Upload Validation
     $("#upload_map_txt").on("click", function () {
         let fileInput = $("#map_txt")[0];
         if (!fileInput.files.length) {
@@ -633,16 +655,10 @@ $(document).ready(function () {
             return;
         }
 
-        // Show processing message (orange style)
         $("#map_txt_status")
             .show()
             .html("Processing...")
-            .css({
-                "color": "orange",
-                "background": "rgba(255, 165, 0, 0.1)",
-                "font-size": "14px",
-                "border": "1px solid orange"
-            });
+            .css({ "color": "orange", "background": "rgba(255,165,0,0.1)", "border": "1px solid orange" });
 
         let formData = new FormData();
         formData.append("map_txt", fileInput.files[0]);
@@ -660,8 +676,11 @@ $(document).ready(function () {
                     });
 
                 txtValidated = data.valid;
+
                 if (data.valid) {
-                    txtMatchedCount = data.count || 0;
+                    $("#drp-section").removeClass("hidden"); // DRP optional hai, show kar dete hain
+                } else {
+                    $("#drp-section").addClass("hidden");
                 }
                 checkIfReadyToSubmit();
             })
