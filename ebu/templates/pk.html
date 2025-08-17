@@ -302,11 +302,17 @@
         }
       }
 
-      @media (max-width: 480px) {
-        h2 {
-          font-size: 1.3rem;
-        }
-      }
+             @media (max-width: 480px) {
+         h2 {
+           font-size: 1.3rem;
+         }
+       }
+       
+       /* Spinner Animation */
+       @keyframes spin {
+         0% { transform: rotate(0deg); }
+         100% { transform: rotate(360deg); }
+       }
     </style>
   </head>
 </head>
@@ -454,8 +460,40 @@ $(document).ready(function () {
     $("#download_template_excel").hide();
 
     function checkIfReadyToSubmit() {
-        $("button[type=submit]").prop("disabled", !(excelValidated && txtValidated));
+        const hasDbFile = $('input[name="has_db_file"]:checked').val();
+        
+        if (hasDbFile === "yes") {
+            // Check if DB file is actually selected
+            const dbFileInput = $("#db_link")[0];
+            const hasDbFileSelected = dbFileInput && dbFileInput.files.length > 0;
+            $("button[type=submit]").prop("disabled", !hasDbFileSelected);
+        } else if (hasDbFile === "no") {
+            // If user needs to validate files, check both validations
+            $("button[type=submit]").prop("disabled", !(excelValidated && txtValidated));
+        } else {
+            // No option selected, keep disabled
+            $("button[type=submit]").prop("disabled", true);
+        }
     }
+
+    // Call checkIfReadyToSubmit initially to ensure button is disabled
+    checkIfReadyToSubmit();
+
+    // Reset form state on page load
+    function resetFormState() {
+        excelValidated = false;
+        txtValidated = false;
+        excelCount = 0;
+        txtMatchedCount = 0;
+        $("#map_txt").prop("disabled", true);
+        $("button[type=submit]").prop("disabled", true);
+        $("#link_excel_msg").empty();
+        $("#map_txt_status").empty();
+        $("#upload_link_btn").addClass("hidden");
+    }
+
+    // Initialize form state
+    resetFormState();
 
     function showAdmCode(admCode) {
         $("#admcode-section").removeClass("hidden");
@@ -476,6 +514,9 @@ $(document).ready(function () {
         $("#kabupaten").empty().append('<option value="">-- Select Kabupaten --</option>');
         hideAdmCode();
         $("#province-section, #kabupaten-section").addClass("hidden");
+        
+        // Reset form state when status changes
+        resetFormState();
 
         if (status === "province") {
             $("#province-section").removeClass("hidden");
@@ -753,6 +794,7 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
         const province = $("#province").val();
         const kabupaten = $("#kabupaten").val();
         const admCodeVisible = !$("#admcode-section").hasClass("hidden");
+        const hasDbFile = $('input[name="has_db_file"]:checked').val();
 
         if (!status) {
             alert("Please select Status");
@@ -778,9 +820,36 @@ document.getElementById("upload_map_txt").addEventListener("click", function(e) 
             return;
         }
 
-        if (!excelValidated || !txtValidated) {
+        // Check if user has DB file or needs to validate Excel/TXT
+        if (hasDbFile === "yes") {
+            // Check if DB file is actually selected
+            const dbFileInput = $("#db_link")[0];
+            if (!dbFileInput || !dbFileInput.files.length) {
+                e.preventDefault();
+                alert("Please select a DB file before submitting.");
+                return;
+            }
+            
+            // Prevent default form submission for DB file mode
             e.preventDefault();
-            alert("Please validate both Excel and TXT files before submitting.");
+            
+            // Show processing message
+            showDbFileStatus("Processing database file...", "processing");
+            
+            // Submit DB file for validation
+            submitDbFileForValidation(dbFileInput.files[0]);
+            return;
+        } else if (hasDbFile === "no") {
+            // User needs to validate Excel and TXT files
+            if (!excelValidated || !txtValidated) {
+                e.preventDefault();
+                alert("Please validate both Excel and TXT files before submitting.");
+                return;
+            }
+        } else {
+            // No option selected
+            e.preventDefault();
+            alert("Please select whether you have a DB file or not.");
             return;
         }
 
