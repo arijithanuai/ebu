@@ -15,5 +15,7 @@ shapely==2.1.1
 six==1.17.0
 sqlparse==0.5.3
 tzdata==2025.2
+mdbtools==0.3.14
+pyodbc==5.2.0
 
 how is everyone 
