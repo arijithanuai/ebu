@@ -14,29 +14,43 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.urls import reverse
 import base64
 
-
 def location_selector(request):
+    # type = 'P'
+    # province = 
     provinces = Province.objects.all()
 
-    if request.method == 'POST':
-        # ---- Save user info from plain HTML form ----
-        admcode = request.POST.get('admcode')
-        lgName = request.POST.get('lgName')
-        emailId = request.POST.get('emailId')
-        phoneNumber = request.POST.get('phoneNumber')
+    # --- Preselect params from URL ---
+    preselect_status = request.GET.get("status", "")
+    preselect_province = request.GET.get("province_id", "")
+    preselect_kabupaten = request.GET.get("kabupaten_id", "")
+
+    # --- AJAX case for kabupaten list ---
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        province_id = request.GET.get("province_id")
+        kabupatens = Kabupaten.objects.filter(
+            province_id=province_id
+        ).values("id", "admNameEng", "kCode")
+        return JsonResponse(list(kabupatens), safe=False)
+
+    # --- Form submission ---
+    if request.method == "POST":
+        admcode = request.POST.get("admcode")
+        lgName = request.POST.get("lgName")
+        emailId = request.POST.get("emailId")
+        phoneNumber = request.POST.get("phoneNumber")
 
         user_obj = User.objects.create(
             admcode=admcode,
             lgName=lgName,
             emailId=emailId,
-            phoneNumber=phoneNumber
+            phoneNumber=phoneNumber,
         )
-    
+
         # ----- Save Excel Data -----
         excel_linkcodes = set()
-        file_content = request.session.get('validated_file')
+        file_content = request.session.get("validated_file")
         if file_content:
-            file_stream = io.BytesIO(file_content.encode('latin1'))
+            file_stream = io.BytesIO(file_content.encode("latin1"))
             df = pd.read_excel(file_stream)
 
             excel_linkcodes = set(df["Link_Code"].astype(str))
@@ -49,26 +63,24 @@ def location_selector(request):
                     linkName=row["Link_Name"],
                     linkLengthOfficial=row["Link_Length_Official"],
                     linkLengthActual=row["Link_Length_Actual"],
-                    status=row["Status"]
+                    status=row["Status"],
                 )
                 for _, row in df.iterrows()
             ]
             Link.objects.bulk_create(links_to_create, ignore_conflicts=True)
-            del request.session['validated_file']
+            del request.session["validated_file"]
             messages.success(
                 request,
-                f"  Link data uploaded successfully! {len(links_to_create)} records saved."
+                f"Link data uploaded successfully! {len(links_to_create)} records saved.",
             )
 
-        # ----- Save TXT Data (match by linkCode) -----
+        # ----- Save TXT Data -----
         txt_content = request.session.get("validated_txt")
         if txt_content:
             txt_link_data = json.loads(txt_content)
-
             from .models import Alignment
-            alignments_to_create = []
 
-            # Get mapping: linkCode → Link object
+            alignments_to_create = []
             link_map = {
                 l.linkCode: l
                 for l in Link.objects.filter(linkCode__in=excel_linkcodes)
@@ -76,43 +88,53 @@ def location_selector(request):
 
             for linkcode, line_wkt in txt_link_data:
                 if linkcode in link_map:
-                    # Convert TXT WKT to GEOSGeometry
                     geom = GEOSGeometry(line_wkt, srid=4326)
-
                     alignments_to_create.append(
-                        Alignment(admCode=admcode, linkNo=link_map[linkcode], linkGeometry=geom)
+                        Alignment(
+                            admCode=admcode,
+                            linkNo=link_map[linkcode],
+                            linkGeometry=geom,
+                        )
                     )
 
             if alignments_to_create:
-                Alignment.objects.bulk_create(alignments_to_create, ignore_conflicts=True)
+                Alignment.objects.bulk_create(
+                    alignments_to_create, ignore_conflicts=True
+                )
                 messages.success(
                     request,
-                    f"  Alignment data uploaded successfully! {len(alignments_to_create)} records saved."
+                    f"Alignment data uploaded successfully! {len(alignments_to_create)} records saved.",
                 )
             else:
                 messages.warning(
                     request,
-                    "⚠ No matching LinkCode found between TXT and Excel data."
+                    "⚠ No matching LinkCode found between TXT and Excel data.",
                 )
 
-            del request.session['validated_txt']
+            del request.session["validated_txt"]
 
+        # ----- Save DRP File -----
         if request.FILES.get("link_drpexcel"):
             drp_file = request.FILES["link_drpexcel"]
             DrpFile.objects.create(admCode=admcode, drpFile=drp_file)
-            messages.success(request, f"✅ DRP file uploaded successfully: {drp_file.name}")
+            messages.success(
+                request, f"  DRP file uploaded successfully: {drp_file.name}"
+            )
 
+        return redirect("select_location")
 
-        return redirect('select_location')
+    # --- Normal GET render ---
+    return render(
+        request,
+        "pk.html",
+        {
+            "provinces": provinces,
+            "preselect_status": preselect_status,
+            "preselect_province": preselect_province,
+            "preselect_kabupaten": preselect_kabupaten,
+        },
+    )
 
-    # GET request
-    return render(request, 'pk.html', {'provinces': provinces})
-
-
-def get_kabupatens(request):
-    province_id = request.GET.get('province_id')
-    kabupatens = Kabupaten.objects.filter(province_id=province_id).values('id', 'admNameEng', 'kCode')
-    return JsonResponse(list(kabupatens), safe=False)
 
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
@@ -157,7 +179,7 @@ def validate_link_excel(request):
                 msg.append(f" Extra/Unexpected columns: {', '.join(extra)}")
             return JsonResponse({
                 "valid": False,
-                "message": " Excel schema invalid ❌<br>" + "<br>".join(msg),
+                "message": " Excel schema invalid  <br>" + "<br>".join(msg),
                 "template_excel_url": reverse("download_template_excel")
             })
 
@@ -245,23 +267,23 @@ def validate_link_excel(request):
             request.session["error_excel"] = base64.b64encode(output.getvalue()).decode("utf-8")
 
             # Return row-wise errors also for frontend
-            row_msgs = [f"❌ Row {i+2} (Link_Code {df.loc[i,'Link_Code']}): {', '.join(errs)}"
+            row_msgs = [f"  Row {i+2} (Link_Code {df.loc[i,'Link_Code']}): {', '.join(errs)}"
                         for i, errs in row_error_map.items()]
 
             return JsonResponse({
                 "valid": False,
-                "message": "Excel validation failed ❌<br>" + "<br>".join(errors + row_msgs),
+                "message": "Excel validation failed  <br>" + "<br>".join(errors + row_msgs),
                 "error_excel_url": reverse("download_error_excel")
             })
 
-        # --- ✅ Valid Excel ---
+        # ---   Valid Excel ---
         file_stream = io.BytesIO()
         df.to_excel(file_stream, index=False)
         request.session['validated_file'] = file_stream.getvalue().decode('latin1')
 
         return JsonResponse({
             "valid": True,
-            "message": f"✅ Link Excel file is valid ({len(df)} records)",
+            "message": f"  Link Excel file is valid ({len(df)} records)",
             "count": len(df)
         })
 

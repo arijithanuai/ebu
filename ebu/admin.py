@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Province, Kabupaten, User, Link, Alignment, DrpFile
+from .models import Province, Kabupaten, User, Link, Alignment, DrpFile, DBfile
 
 
 admin.site.register(Province)
@@ -7,6 +7,7 @@ admin.site.register(Kabupaten)
 admin.site.register(User)
 admin.site.register(Link)
 admin.site.register(DrpFile)
+admin.site.register(DBfile)
 
 from django.contrib import admin
 from leaflet.admin import LeafletGeoAdmin

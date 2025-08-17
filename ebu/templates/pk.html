@@ -185,7 +185,9 @@
         }
         .db-file-conatiner{
           margin-top:10px;
+          width:50%;
         }
+       
         .db-file-input{
           display:flex;
           flex-direction:row;
@@ -226,6 +228,20 @@
         min-width: 70px;
         height: 45px;
       }
+       .excel-file-upload-section{
+         display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .map-upload-section{
+            margin-top: 10px;
+        width: 49%;  
+        }
+      #link-excel-section {
+        margin-top: 10px;
+        width: 49%;    
+      }
 
       /* Upload Status Messages */
       #link_excel_msg,
@@ -258,7 +274,7 @@
       }
       /* Disabled Buttons */
       button:disabled {
-        background:#04a16d
+        background:#04a16d;
         color:rgb(255, 255, 255);
         cursor: not-allowed;
         transform: none;
@@ -377,8 +393,9 @@
         </div>
         </div>
 
+        <div class="excel-file-upload-section">
         <!-- Link Excel -->
-        <div id="link-excel-section" class="hidden" style="margin-top: 10px">
+        <div id="link-excel-section" class="hidden">
         <div class="upload-section"> 
             <label for="link_excel">Link Excel File</label>
             <input type="file" name="link_excel" id="link_excel" accept=".xlsx,.xls" />
@@ -388,9 +405,9 @@
             <button id="download_template_excel" type="button" class="hidden bg-blue-500 text-white px-3 py-1 rounded mt-2">Download Template Excel</button>
         </div>
         </div>
-
+<div class="map-upload-section"> 
         <!-- Map TXT -->
-        <div id="map-section" class="hidden upload-section" style="margin-top: 10px">
+        <div id="map-section" class="hidden upload-section">
         <label for="map_txt">Alignment TXT File*</label>
         <input type="file" name="map_txt" id="map_txt" accept=".txt" />
         <div id="map_txt_status"></div>
@@ -402,7 +419,8 @@
         <label for="drp">DRP:</label>
         <input type="file" name="link_drpexcel" id="drp" />
         </div>
-
+</div>
+</div>
         <!-- DB Upload Section -->
         <div id="db-section" class="hidden upload-section" style="margin-top: 10px">
         <label for="db_file">Upload DB File:</label>
@@ -421,10 +439,8 @@
     </div>
   </div>
 </body>
-
 <script>
 $(document).ready(function () {
-    let txtMatchedCount = 0;
     let excelValidated = false;
     let txtValidated = false;
 
@@ -453,7 +469,7 @@ $(document).ready(function () {
         $('input[name="admcode"]').val("");
     }
 
-    // Status change
+    // -------------------- Status change --------------------
     $("#status").on("change", function () {
         const status = $(this).val();
         $("#province").val("");
@@ -468,7 +484,7 @@ $(document).ready(function () {
         }
     });
 
-    // Province change
+    // -------------------- Province change --------------------
     $("#province").on("change", function () {
         const status = $("#status").val();
         const selectedOption = $(this).find(":selected");
@@ -484,8 +500,9 @@ $(document).ready(function () {
             $("#kabupaten").empty().append('<option value="">-- Loading --</option>');
             if (provinceId) {
                 $.ajax({
-                    url: "{% url 'get_kabupatens' %}",
+                    url: window.location.pathname,
                     data: { province_id: provinceId },
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
                     success: function (data) {
                         $("#kabupaten").empty().append('<option value="">-- Select Kabupaten --</option>');
                         $.each(data, function (index, item) {
@@ -498,37 +515,62 @@ $(document).ready(function () {
                                 </option>`
                             );
                         });
-                    },
+
+                        // ✅ Preselect kabupaten agar URL me diya ho
+                        const preKab = "{{ preselect_kabupaten|default:'' }}";
+                        if (preKab) {
+                            $("#kabupaten").val(preKab).trigger("change");
+                        }
+                    }
                 });
             }
         }
     });
 
-    // Kabupaten change
+    // -------------------- Kabupaten change --------------------
     $("#kabupaten").on("change", function () {
         const selected = $(this).find(":selected");
         const admCode = selected.data("admcode");
         admCode ? showAdmCode(admCode) : hideAdmCode();
     });
 
-    // DB file toggle
-    $('input[name="has_db_file"]').on("change", function () {
-        if ($(this).val() === "yes") {
-            $("#db-section").removeClass("hidden");
-            $("#link-excel-section").addClass("hidden");
-        } else {
-            $("#link-excel-section").removeClass("hidden");
-            $("#db-section").addClass("hidden");
-            $("#db_file").val("");
-        }
-    });
+    // -------------------- DB file toggle --------------------
+    // -------------------- DB file toggle --------------------
+$('input[name="has_db_file"]').on("change", function () {
+    if ($(this).val() === "yes") {
+        // ✅ Show only DB file section
+        $("#db-section").removeClass("hidden");
 
-    // Show Excel upload btn
+        // ✅ Hide everything else
+        $("#link-excel-section").addClass("hidden");
+        $("#map-section").addClass("hidden");
+        $("#drp-section").addClass("hidden");
+
+        // Reset values
+        $("#link_excel").val("");
+        $("#map_txt").val("");
+        $("#drp").val("");
+        excelValidated = false;
+        txtValidated = false;
+        $("button[type=submit]").prop("disabled", true);
+
+    } else {
+        // ✅ Show Excel workflow
+        $("#link-excel-section").removeClass("hidden");
+        $("#db-section").addClass("hidden");
+        $("#map-section").addClass("hidden");
+        $("#drp-section").addClass("hidden");
+
+        $("#db_file").val("");
+    }
+});
+
+
+    // -------------------- Excel Upload Validation --------------------
     $("#link_excel").on("change", function () {
         $("#upload_link_btn").show();
     });
 
-    // Excel Upload Validation
     $("#upload_link_btn").on("click", function () {
         let fileInput = $("#link_excel")[0];
         if (!fileInput.files.length) {
@@ -549,7 +591,6 @@ $(document).ready(function () {
         fetch("{% url 'validate_link_excel' %}", { method: "POST", body: formData })
             .then(res => res.json())
             .then(data => {
-                // Reset download buttons
                 $("#download_error_excel").hide();
                 $("#download_template_excel").hide();
 
@@ -571,7 +612,6 @@ $(document).ready(function () {
                     $("#map_txt").prop("disabled", true);
                     txtValidated = false;
 
-                    // If row-level errors exist
                     if (data.error_excel_url) {
                         $("#download_error_excel")
                             .show()
@@ -581,7 +621,6 @@ $(document).ready(function () {
                             });
                     }
 
-                    // If schema error exists
                     if (data.template_excel_url) {
                         $("#download_template_excel")
                             .show()
@@ -595,9 +634,80 @@ $(document).ready(function () {
             })
             .catch(err => alert(`Error uploading file: ${err.message || err}`));
     });
+// ====================== Form Validation (Name/Email/Phone) ======================
+const nameField = document.getElementById("lgName");
+const emailField = document.getElementById("emailId");
+const phoneField = document.getElementById("phoneNumber");
 
+const nameError = document.getElementById("nameError");
+const emailError = document.getElementById("emailError");
+const phoneError = document.getElementById("phoneError");
 
-     // TXT Upload Validation
+function validateName() {
+   if (!/^[A-Za-z0-9_\s]{2,}$/.test(nameField.value.trim())) {
+    nameError.textContent = "Enter a valid name ";
+    return false;
+}
+    nameError.textContent = "";
+    return true;
+}
+
+function validateEmail() {
+    if (!/^\S+@\S+\.\S+$/.test(emailField.value.trim())) {
+        emailError.textContent = "Enter a valid email";
+        return false;
+    }
+    emailError.textContent = "";
+    return true;
+}
+
+function validatePhone() {
+    if (!/^\d{11,14}$/.test(phoneField.value.trim())) {
+        phoneError.textContent = "Enter phone number between 11 and 14 digits";
+        return false;
+    }
+    phoneError.textContent = "";
+    return true;
+}
+
+// Helper function
+function validateFormFields() {
+    return validateName() && validateEmail() && validatePhone();
+}
+
+// Live validation
+nameField.addEventListener("input", validateName);
+emailField.addEventListener("input", validateEmail);
+phoneField.addEventListener("input", validatePhone);
+
+// Stop form submit if invalid
+document.getElementById("myForm").addEventListener("submit", function(e) {
+    if (!validateFormFields()) {
+        e.preventDefault();
+        alert("Please correct Name, Email, and Phone before submitting.");
+    }
+});
+
+// Block Upload buttons if invalid
+document.getElementById("upload_link_btn").addEventListener("click", function(e) {
+    if (!validateFormFields()) {
+        e.preventDefault();
+        alert("Please fill Name, Email, and Phone correctly before uploading Excel.");
+        return;
+    }
+    // Excel upload code continues here...
+});
+
+document.getElementById("upload_map_txt").addEventListener("click", function(e) {
+    if (!validateFormFields()) {
+        e.preventDefault();
+        alert("Please fill Name, Email, and Phone correctly before uploading TXT.");
+        return;
+    }
+    
+});
+
+    // -------------------- TXT Upload Validation --------------------
     $("#upload_map_txt").on("click", function () {
         let fileInput = $("#map_txt")[0];
         if (!fileInput.files.length) {
@@ -628,7 +738,7 @@ $(document).ready(function () {
                 txtValidated = data.valid;
 
                 if (data.valid) {
-                    $("#drp-section").removeClass("hidden"); // DRP optional hai, show kar dete hain
+                    $("#drp-section").removeClass("hidden");
                 } else {
                     $("#drp-section").addClass("hidden");
                 }
@@ -637,7 +747,7 @@ $(document).ready(function () {
             .catch(err => alert("Error uploading TXT: " + err));
     });
 
-    // Confirm before submit
+    // -------------------- Form Submit Confirm --------------------
     $("form").on("submit", function (e) {
         const status = $("#status").val();
         const province = $("#province").val();
@@ -674,58 +784,34 @@ $(document).ready(function () {
             return;
         }
 
-        let confirmMsg = `You sure you want to submit?`;
-        if (!confirm(confirmMsg)) {
+        if (!confirm("You sure you want to submit?")) {
             e.preventDefault();
         }
     });
-});
 
-// ====================== Form Validation (Name/Email/Phone) ======================
-const nameField = document.getElementById("lgName");
-const emailField = document.getElementById("emailId");
-const phoneField = document.getElementById("phoneNumber");
+    // -------------------- Preselect from URL --------------------
+    const preStatus = "{{ preselect_status|default:'' }}";
+    const preProvince = "{{ preselect_province|default:'' }}";
+    const preKabupaten = "{{ preselect_kabupaten|default:'' }}";
 
-const nameError = document.getElementById("nameError");
-const emailError = document.getElementById("emailError");
-const phoneError = document.getElementById("phoneError");
-
-function validateName() {
-    if (!/^[A-Za-z\s]{2,}$/.test(nameField.value.trim())) {
-        nameError.textContent = "Enter a valid name (letters only)";
-        return false;
+    if (preStatus) {
+        $("#status").val(preStatus).trigger("change");
     }
-    nameError.textContent = "";
-    return true;
-}
 
-function validateEmail() {
-    if (!/^\S+@\S+\.\S+$/.test(emailField.value.trim())) {
-        emailError.textContent = "Enter a valid email";
-        return false;
-    }
-    emailError.textContent = "";
-    return true;
-}
+    if (preProvince) {
+        $("#province").val(preProvince).trigger("change");
+        $("#province-section").removeClass("hidden");
 
-function validatePhone() {
-    if (!/^\d{10}$/.test(phoneField.value.trim())) {
-        phoneError.textContent = "Enter 10-digit phone";
-        return false;
-    }
-    phoneError.textContent = "";
-    return true;
-}
+        const pCode = $("#province option:selected").data("pcode");
 
-nameField.addEventListener("input", validateName);
-emailField.addEventListener("input", validateEmail);
-phoneField.addEventListener("input", validatePhone);
-
-document.getElementById("myForm").addEventListener("submit", function(e) {
-    if (!validateName() | !validateEmail() | !validatePhone()) {
-        e.preventDefault();
+        if (preStatus === "province" && pCode) {
+            showAdmCode(`${pCode}-00`);
+        }
     }
 });
+
+
+
 </script>
 
 
