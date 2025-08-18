@@ -1,5 +1,20 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from .models import Province, Kabupaten, Link, User, DrpFile, DBfile
+from .forms import UserForm
+import csv
+import sys
+from django.contrib import messages
+import pandas as pd
+from django.views.decorators.csrf import csrf_exempt
+import io
+from shapely import wkt
+import json
+from django.contrib.gis.geos import GEOSGeometry
+from django.urls import reverse
+import base64
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from .models import Province, Kabupaten, Link, User, DrpFile,DBfile
 from .forms import UserForm
 import csv
@@ -20,72 +35,77 @@ from django.core.files.base import ContentFile
 from django.conf import settings
 from .Scripts.main import runValidationScript
 
-def get_validation_summary(excel_file_path):
-    """
-    Helper function to get a summary of validation errors from the Excel file
-    """
-    try:
-        import pandas as pd
-        excel_file = pd.ExcelFile(excel_file_path)
-        summary = {}
-        total_errors = 0
-        
-        for sheet_name in excel_file.sheet_names:
-            df = pd.read_excel(excel_file, sheet_name=sheet_name)
-            if not df.empty:
-                # Count rows that are not success messages
-                error_rows = df[
-                    (~df['Record_No'].astype(str).str.contains('NO_ERRORS', na=False)) &
-                    (~df['Record_No'].astype(str).str.contains('SUCCESS', na=False)) &
-                    (~df['Record_No'].astype(str).str.contains('EMPTY_TABLE', na=False))
-                ]
-                error_count = len(error_rows)
-                summary[sheet_name] = error_count
-                total_errors += error_count
-        
-        return summary, total_errors
-    except Exception as e:
-        print(f"Error getting validation summary: {e}")
-        return {}, 0
+import json
+import base64
+from django.http import JsonResponse, HttpResponseForbidden
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
+# Decode and verify token
+# def decode_token(token):
+#     try:
+#         # Decode the base64 token
+#         decoded_data = base64.b64decode(token).decode('utf-8')
+#         # Parse the JSON data from the decoded token
+#         token_data = json.loads(decoded_data)
+#         return token_data
+#     except Exception as e:
+#         print(f"Error decoding token: {e}")
+#         return None
 
 def location_selector(request):
-    # type = 'P'
-    # province = 
+    # token = request.GET.get('token',None)
+    # print(token)
+    # if not token:
+    #     return HttpResponseForbidden("Token is missing or invalid.")
+
+    # # Decode the token
+    # token_data = decode_token(token)
+    # print(token_data)
+
+    # if not token_data:
+    #     return HttpResponseForbidden("Invalid token.")
+    # admin_code = token_data.get('adminCode')
+    # user_role = token_data.get('userRole')
+    # print(admin_code)
+
+    # # split the adminCode
+    # parts = token_data["adminCode"].split("-")
+
+    # pCode = parts[1]  # "52"
+    # kCode = parts[2]  # "00"
+    # status = token_data["userRole"]
+
+    # result = {
+    #     "pCode": pCode,
+    #     "kCode": kCode,
+    #     "status": status
+    # }
+
+    # print(result)
+
+    
     provinces = Province.objects.all()
 
-    # --- Preselect params from URL ---
-    preselect_status = request.GET.get("status", "")
-    preselect_province = request.GET.get("province_id", "")
-    preselect_kabupaten = request.GET.get("kabupaten_id", "")
-
-    # --- AJAX case for kabupaten list ---
-    if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        province_id = request.GET.get("province_id")
-        kabupatens = Kabupaten.objects.filter(
-            province_id=province_id
-        ).values("id", "admNameEng", "kCode")
-        return JsonResponse(list(kabupatens), safe=False)
-
-    # --- Form submission ---
-    if request.method == "POST":
-        admcode = request.POST.get("admcode")
-        lgName = request.POST.get("lgName")
-        emailId = request.POST.get("emailId")
-        phoneNumber = request.POST.get("phoneNumber")
-
+    if request.method == 'POST':
+        # ---- Save user info from plain HTML form ----
+        admcode = request.POST.get('admcode')
+        lgName = request.POST.get('lgName')
+        emailId = request.POST.get('emailId')
+        phoneNumber = request.POST.get('phoneNumber')
+        
         user_obj = User.objects.create(
             admcode=admcode,
             lgName=lgName,
             emailId=emailId,
-            phoneNumber=phoneNumber,
+            phoneNumber=phoneNumber
         )
-        
+    
         # ----- Save Excel Data -----
         excel_linkcodes = set()
-        file_content = request.session.get("validated_file")
+        file_content = request.session.get('validated_file')
         if file_content:
-            file_stream = io.BytesIO(file_content.encode("latin1"))
+            file_stream = io.BytesIO(file_content.encode('latin1'))
             df = pd.read_excel(file_stream)
 
             excel_linkcodes = set(df["Link_Code"].astype(str))
@@ -98,24 +118,26 @@ def location_selector(request):
                     linkName=row["Link_Name"],
                     linkLengthOfficial=row["Link_Length_Official"],
                     linkLengthActual=row["Link_Length_Actual"],
-                    status=row["Status"],
+                    status=row["Status"]
                 )
                 for _, row in df.iterrows()
             ]
             Link.objects.bulk_create(links_to_create, ignore_conflicts=True)
-            del request.session["validated_file"]
+            del request.session['validated_file']
             messages.success(
                 request,
-                f"Link data uploaded successfully! {len(links_to_create)} records saved.",
+                f"  Link data uploaded successfully! {len(links_to_create)} records saved."
             )
 
-        # ----- Save TXT Data -----
+        # ----- Save TXT Data (match by linkCode) -----
         txt_content = request.session.get("validated_txt")
         if txt_content:
             txt_link_data = json.loads(txt_content)
-            from .models import Alignment
 
+            from .models import Alignment
             alignments_to_create = []
+
+            # Get mapping: linkCode → Link object
             link_map = {
                 l.linkCode: l
                 for l in Link.objects.filter(linkCode__in=excel_linkcodes)
@@ -123,53 +145,49 @@ def location_selector(request):
 
             for linkcode, line_wkt in txt_link_data:
                 if linkcode in link_map:
+                    # Convert TXT WKT to GEOSGeometry
                     geom = GEOSGeometry(line_wkt, srid=4326)
+
                     alignments_to_create.append(
-                        Alignment(
-                            admCode=admcode,
-                            linkNo=link_map[linkcode],
-                            linkGeometry=geom,
-                        )
+                        Alignment(admCode=admcode, linkNo=link_map[linkcode], linkGeometry=geom)
                     )
 
             if alignments_to_create:
-                Alignment.objects.bulk_create(
-                    alignments_to_create, ignore_conflicts=True
-                )
+                Alignment.objects.bulk_create(alignments_to_create, ignore_conflicts=True)
                 messages.success(
                     request,
-                    f"Alignment data uploaded successfully! {len(alignments_to_create)} records saved.",
+                    f"  Alignment data uploaded successfully! {len(alignments_to_create)} records saved."
                 )
             else:
                 messages.warning(
                     request,
-                    "⚠ No matching LinkCode found between TXT and Excel data.",
+                    "⚠ No matching LinkCode found between TXT and Excel data."
                 )
 
-            del request.session["validated_txt"]
+            del request.session['validated_txt']
 
-        # ----- Save DRP File -----
         if request.FILES.get("link_drpexcel"):
             drp_file = request.FILES["link_drpexcel"]
             DrpFile.objects.create(admCode=admcode, drpFile=drp_file)
-            messages.success(
-                request, f"  DRP file uploaded successfully: {drp_file.name}"
-            )
+            messages.success(request, f"✅ DRP file uploaded successfully: {drp_file.name}")
 
-        return redirect("select_location")
+        # ----- Save DB File -----
+        if request.FILES.get("db_file"):
+            db_file = request.FILES["db_file"]
+            DBfile.objects.create(admCode=admcode, fileUrl=db_file)
+            messages.success(request, f"✅ DB file uploaded successfully: {db_file.name}")
 
-    # --- Normal GET render ---
-    return render(
-        request,
-        "pk.html",
-        {
-            "provinces": provinces,
-            "preselect_status": preselect_status,
-            "preselect_province": preselect_province,
-            "preselect_kabupaten": preselect_kabupaten,
-        },
-    )
 
+        return redirect('select_location')
+
+    # GET request
+    return render(request, 'pk.html', {'provinces': provinces})
+
+
+def get_kabupatens(request):
+    province_id = request.GET.get('province_id')
+    kabupatens = Kabupaten.objects.filter(province_id=province_id).values('id', 'admNameEng', 'kCode')
+    return JsonResponse(list(kabupatens), safe=False)
 
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
@@ -214,7 +232,7 @@ def validate_link_excel(request):
                 msg.append(f" Extra/Unexpected columns: {', '.join(extra)}")
             return JsonResponse({
                 "valid": False,
-                "message": " Excel schema invalid  <br>" + "<br>".join(msg),
+                "message": " Excel schema invalid ❌<br>" + "<br>".join(msg),
                 "template_excel_url": reverse("download_template_excel")
             })
 
@@ -302,23 +320,23 @@ def validate_link_excel(request):
             request.session["error_excel"] = base64.b64encode(output.getvalue()).decode("utf-8")
 
             # Return row-wise errors also for frontend
-            row_msgs = [f"  Row {i+2} (Link_Code {df.loc[i,'Link_Code']}): {', '.join(errs)}"
+            row_msgs = [f"❌ Row {i+2} (Link_Code {df.loc[i,'Link_Code']}): {', '.join(errs)}"
                         for i, errs in row_error_map.items()]
 
             return JsonResponse({
                 "valid": False,
-                "message": "Excel validation failed  <br>" + "<br>".join(errors + row_msgs),
+                "message": "Excel validation failed ❌<br>" + "<br>".join(errors + row_msgs),
                 "error_excel_url": reverse("download_error_excel")
             })
 
-        # ---   Valid Excel ---
+        # --- ✅ Valid Excel ---
         file_stream = io.BytesIO()
         df.to_excel(file_stream, index=False)
         request.session['validated_file'] = file_stream.getvalue().decode('latin1')
 
         return JsonResponse({
             "valid": True,
-            "message": f"  Link Excel file is valid ({len(df)} records)",
+            "message": f"✅ Link Excel file is valid ({len(df)} records)",
             "count": len(df)
         })
 
@@ -387,10 +405,6 @@ from django.http import HttpResponse
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
 import io
-import tempfile
-import os
-import json
-import pyodbc 
 
 def download_error_excel(request):
     error_excel_b64 = request.session.get("error_excel")
@@ -428,12 +442,19 @@ def download_template_excel(request):
     return response
 
 
+
 @csrf_exempt
 def validate_db_file(request):
+    
     if request.method == "POST" and request.FILES.get("db_file"):
         file = request.FILES["db_file"]
-        print(file)
-
+        admCode = request.POST.get("admcode")
+        
+        if not admCode:
+            return JsonResponse({
+                 "valid": False,
+                "message": "Please Select Status and Province/Kabupaten"
+            })
         # Check if file is .accdb
         if not file.name.lower().endswith('.accdb'):
             return JsonResponse({
@@ -457,7 +478,7 @@ def validate_db_file(request):
 
             if temp_file_path and os.path.exists(temp_file_path):
                 # Run validation
-                validation_result = runValidationScript(temp_file_path)
+                validation_result = runValidationScript(temp_file_path , admCode)
 
                 if validation_result and validation_result.get("success"):
                     # Collect validation summary
@@ -533,147 +554,30 @@ def validate_db_file(request):
 
     return JsonResponse({"valid": False, "message": "No file uploaded"})
 
-
-@csrf_exempt
-def upload_db_file(request):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
-
-    db_file = request.FILES.get('db_file')
-    adm_code = request.POST.get('admCode')
-    lg_name = request.POST.get('lgName')
-    email_id = request.POST.get('emailId')
-    phone_number = request.POST.get('phoneNumber')
-
-    # Basic validations
-    if not db_file or not adm_code:
-        return JsonResponse({'success': False, 'message': 'Missing file or admCode'}, status=400)
-
-    if not db_file.name.endswith('.accdb'):
-        return JsonResponse({'success': False, 'message': 'Only .accdb files are allowed'}, status=400)
-
-    try:
-        # Create timestamped filename
-        base_name, ext = os.path.splitext(db_file.name)
-        timestamp = time.strftime('%Y%m%d_%H%M%S')
-        new_filename = f"{base_name}_{timestamp}{ext}"
-
-        # Full relative path inside MEDIA_ROOT
-        relative_path = os.path.join('dbFiles' ,new_filename)
-
-        # Save file to disk
-        saved_path = default_storage.save(relative_path, ContentFile(db_file.read()))
-        file_url = os.path.join(settings.MEDIA_URL, saved_path)
-
-        # Save to DBfile model
-        DBfile.objects.create(admCode=adm_code, fileUrl=file_url)
-
-        # Create new User (always create new record)
-        user_obj = User.objects.create(
-            admcode=adm_code,
-            lgName=lg_name or '',
-            emailId=email_id or '',
-            phoneNumber=phone_number or '',
-        )
-
-        return JsonResponse({
-            'success': True,
-            'message': 'File uploaded and user created successfully',
-            'admCode': adm_code,
-            'fileUrl': file_url,
-            'user_id': user_obj.id
-        }, status=201)
-
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': f'Error: {str(e)}'}, status=500)
-
-
-
-# @csrf_exempt
-# def get_validation_status(request):
-#     """
-#     Endpoint to get the current validation status and results
-#     """
-#     try:
-#         script_dir = os.path.dirname(os.path.abspath(__file__))
-#         validation_output_dir = os.path.join(script_dir, "Scripts", "validation_outputs")
-#         excel_file_path = os.path.join(validation_output_dir, "link_validation.xlsx")
-#         metadata_file = os.path.join(validation_output_dir, "upload_metadata.json")
-        
-#         status = {
-#             "validation_file_exists": os.path.exists(excel_file_path),
-#             "metadata_file_exists": os.path.exists(metadata_file),
-#             "validation_output_dir": validation_output_dir
-#         }
-        
-#         if os.path.exists(excel_file_path):
-#             # Get validation summary
-#             summary, total_errors = get_validation_summary(excel_file_path)
-#             status.update({
-#                 "total_errors": total_errors,
-#                 "summary": summary,
-#                 "validation_passed": total_errors == 0
-#             })
-        
-#         if os.path.exists(metadata_file):
-#             with open(metadata_file, 'r') as f:
-#                 metadata = json.load(f)
-#             status["upload_metadata"] = metadata
-        
-#         return JsonResponse(status)
-        
-#     except Exception as e:
-#         return JsonResponse({
-#             "valid": False,
-#             "message": f"Error getting validation status: {str(e)}"
-#         })
-
-
-# @csrf_exempt
-# def download_validation_results(request):
+def get_validation_summary(excel_file_path):
     """
-    Endpoint to download the validation results Excel file
+    Helper function to get a summary of validation errors from the Excel file
     """
     try:
-        import os
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        validation_output_dir = os.path.join(script_dir, "Scripts", "validation_outputs")
-        excel_file_path = os.path.join(validation_output_dir, "link_validation.xlsx")
+        import pandas as pd
+        excel_file = pd.ExcelFile(excel_file_path)
+        summary = {}
+        total_errors = 0
         
-        if os.path.exists(excel_file_path):
-            from django.http import FileResponse
-            import mimetypes
-            
-            # Get validation summary
-            summary, total_errors = get_validation_summary(excel_file_path)
-            
-            # Determine MIME type
-            mime_type, _ = mimetypes.guess_type(excel_file_path)
-            if mime_type is None:
-                mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            
-            # Open and return the file
-            file_handle = open(excel_file_path, 'rb')
-            response = FileResponse(file_handle, content_type=mime_type)
-            
-            if total_errors > 0:
-                response['Content-Disposition'] = f'attachment; filename="validation_errors.xlsx"'
-            else:
-                response['Content-Disposition'] = f'attachment; filename="validation_report.xlsx"'
-            
-            # Add error summary to response headers
-            response['X-Validation-Errors'] = str(total_errors)
-            response['X-Validation-Summary'] = json.dumps(summary)
-            
-            return response
-        else:
-            return JsonResponse({
-                "valid": False,
-                "message": "Validation results file not found. Please run validation first."
-            })
-            
+        for sheet_name in excel_file.sheet_names:
+            df = pd.read_excel(excel_file, sheet_name=sheet_name)
+            if not df.empty:
+                # Count rows that are not success messages
+                error_rows = df[
+                    (~df['Record_No'].astype(str).str.contains('NO_ERRORS', na=False)) &
+                    (~df['Record_No'].astype(str).str.contains('SUCCESS', na=False)) &
+                    (~df['Record_No'].astype(str).str.contains('EMPTY_TABLE', na=False))
+                ]
+                error_count = len(error_rows)
+                summary[sheet_name] = error_count
+                total_errors += error_count
+        
+        return summary, total_errors
     except Exception as e:
-        return JsonResponse({
-            "valid": False,
-            "message": f"Error downloading validation results: {str(e)}"
-        })
+        print(f"Error getting validation summary: {e}")
+        return {}, 0

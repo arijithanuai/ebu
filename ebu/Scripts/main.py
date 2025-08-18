@@ -1,6 +1,75 @@
+import os as _os
+import subprocess as _subprocess
+import io as _io
+import pandas as _pd
+
+def _read_link_table_cross_platform(db_path: str) -> _pd.DataFrame:
+    try:
+        if _os.name == 'nt':
+            import pyodbc as _pyodbc
+            conn_str = (
+                r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
+                f'DBQ={db_path};'
+            )
+            conn = _pyodbc.connect(conn_str)
+            try:
+                df = _pd.read_sql_query("SELECT Province_Code, Kabupaten_Code FROM [Link]", conn)
+            finally:
+                conn.close()
+            return df
+        else:
+            result = _subprocess.run(['mdb-export', db_path, 'Link'], capture_output=True, text=True, check=True)
+            df = _pd.read_csv(_io.StringIO(result.stdout))
+            cols = [c for c in df.columns if c in ['Province_Code','Kabupaten_Code']]
+            return df[cols] if cols else _pd.DataFrame(columns=['Province_Code','Kabupaten_Code'])
+    except Exception:
+        return _pd.DataFrame(columns=['Province_Code','Kabupaten_Code'])
+
+def check_admcode_in_link_table(db_path: str, adm_code: str) -> dict:
+    """
+    Verify that adm_code (format 'PP-KK') exists in Link table by matching Province_Code==PP
+    and Kabupaten_Code==KK, treating '0' and '00' as equivalent and ignoring leading zeros.
+    Returns: {success, exists, matched_rows, message}
+    """
+    try:
+        if not adm_code or '-' not in adm_code:
+            return {'success': False, 'exists': False, 'matched_rows': 0, 'message': 'Invalid adm_code'}
+        prov_part, kab_part = [p.strip() for p in adm_code.split('-', 1)]
+        def norm_to_int(s):
+            if s is None: return None
+            s = str(s).strip()
+            if s == '': return None
+            try: return int(s)
+            except ValueError:
+                try: return int(s.lstrip('0') or '0')
+                except Exception: return None
+        prov_int = norm_to_int(prov_part)
+        kab_int = norm_to_int(kab_part)
+        df = _read_link_table_cross_platform(db_path)
+        if df.empty:
+            return {'success': False, 'exists': False, 'matched_rows': 0, 'message': 'Link table empty or unreadable'}
+        df_norm = _pd.DataFrame({
+            'Province_Code': df.get('Province_Code'),
+            'Kabupaten_Code': df.get('Kabupaten_Code'),
+        }).copy()
+        df_norm['Province_Code_int'] = df_norm['Province_Code'].apply(norm_to_int)
+        df_norm['Kabupaten_Code_int'] = df_norm['Kabupaten_Code'].apply(norm_to_int)
+        matches = df_norm[
+            (df_norm['Province_Code_int'] == prov_int) &
+            (df_norm['Kabupaten_Code_int'] == kab_int)
+        ]
+        exists = len(matches) > 0
+        return {
+            'success': True,
+            'exists': exists,
+            'matched_rows': int(len(matches)),
+            'message': 'Match found' if exists else 'No matching (Province_Code, Kabupaten_Code) for adm_code'
+        }
+    except Exception as ex:
+        return {'success': False, 'exists': False, 'matched_rows': 0, 'message': str(ex)}
 
 
-def runValidationScript(db_path):
+def runValidationScript(db_path , admCode):
     import os
     import sys
     import pandas as pd
@@ -11,6 +80,13 @@ def runValidationScript(db_path):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
+
+    check_admcode_in_link_table(db_path, admCode)
+    if not check_admcode_in_link_table(db_path, admCode)['exists']:
+        return {
+            "success": False,
+            "message": f"❌ Validation failed: adm_code '{admCode}'  Admin Code must match with the inputed Db_File"
+        }
 
     from all_table_validations.validate_link import required_columns as link_required, validate_row as validate_link_row
     from all_table_validations.validate_alignment import required_columns as align_required, validate_alignment

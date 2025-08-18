@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -185,9 +186,7 @@
         }
         .db-file-conatiner{
           margin-top:10px;
-          width:50%;
         }
-       
         .db-file-input{
           display:flex;
           flex-direction:row;
@@ -217,7 +216,18 @@
         background:#04a16d;
         transform: translateY(-2px);
       }
+      .excel-upload-section{
+        display:flex;
+        flex-direction:row;
+        gap:10px;
+      }
+      .map-section{
+        width:49%;
+      }
 
+      #link-excel-section{
+        width:49%;
+      }
       /* AdmCode Display */
       #admcode-display {
         background: #1e293b;
@@ -228,23 +238,9 @@
         min-width: 70px;
         height: 45px;
       }
-       .excel-file-upload-section{
-         display: flex;
-          flex-direction: row;
-          flex-wrap: wrap;
-          gap: 10px;
-        }
-        .map-upload-section{
-            margin-top: 10px;
-        width: 49%;  
-        }
-      #link-excel-section {
-        margin-top: 10px;
-        width: 49%;    
-      }
 
       /* Upload Status Messages */
-      #link_excel_msg,
+      #link_excel_msg, #db_status,
       #map_txt_status{
         margin-top: 10px;
         padding: 10px;
@@ -252,9 +248,9 @@
         font-weight: 500;
       }
       #link_excel_msg:empty,
-#map_txt_status:empty {
-  display: none;
-}
+      #map_txt_status:empty {
+        display: none;
+      }
 
       #link_excel_msg[style*="green"] {
         background: rgba(4, 161, 109, 0.1);
@@ -269,12 +265,15 @@
         font-size:14px;
         border: 1px solid #ef4444;
       }
-#db-section{
+      #db-link-section{
         max-width: 500px;
+      }
+      #db-section{
+        width:49%;
       }
       /* Disabled Buttons */
       button:disabled {
-        background:#04a16d;
+        background:#04a16d
         color:rgb(255, 255, 255);
         cursor: not-allowed;
         transform: none;
@@ -302,17 +301,11 @@
         }
       }
 
-             @media (max-width: 480px) {
-         h2 {
-           font-size: 1.3rem;
-         }
-       }
-       
-       /* Spinner Animation */
-       @keyframes spin {
-         0% { transform: rotate(0deg); }
-         100% { transform: rotate(360deg); }
-       }
+      @media (max-width: 480px) {
+        h2 {
+          font-size: 1.3rem;
+        }
+      }
     </style>
   </head>
 </head>
@@ -373,19 +366,19 @@
         <div class="input-fields">
           <div>
             <label for="lgName">LG Name:</label>
-            <input type="text" name="lgName" id="lgName" class="form-control" required>
+            <input type="text" name="lgName" id="lgName" placeholder="Enter LG Name" class="form-control" required>
             <span class="error" id="nameError"></span>
           </div>
 
           <div>
             <label for="emailId">Email:</label>
-            <input type="email" name="emailId" id="emailId" class="form-control" required>
+            <input type="email" name="emailId" id="emailId" placeholder="Enter Email Address" class="form-control" required>
             <span class="error" id="emailError"></span>
           </div>
 
           <div>
             <label for="phoneNumber">Phone:</label>
-            <input type="text" name="phoneNumber" id="phoneNumber" class="form-control" required>
+            <input type="text" name="phoneNumber" id="phoneNumber" placeholder="Enter Phone Number" class="form-control" required>
             <span class="error" id="phoneError"></span>
           </div>
         </div>
@@ -399,21 +392,22 @@
         </div>
         </div>
 
-        <div class="excel-file-upload-section">
+        <div class="excel-upload-section">
         <!-- Link Excel -->
-        <div id="link-excel-section" class="hidden">
+        <div id="link-excel-section" class="hidden" style="margin-top: 10px">
         <div class="upload-section"> 
             <label for="link_excel">Link Excel File</label>
             <input type="file" name="link_excel" id="link_excel" accept=".xlsx,.xls" />
             <div id="link_excel_msg"></div>
             <button type="button" id="upload_link_btn" class="hidden">Validate Excel</button>
             <button id="download_error_excel" type="button" class="hidden bg-red-500 text-white px-3 py-1 rounded mt-2">Download Errors Excel</button>
-            <button id="download_template_excel" type="button" class="hidden bg-blue-500 text-white px-3 py-1 rounded mt-2">Download Template Excel</button>
+            <button id="download_template_excel" type="button" onclick="window.location.href='{% url 'download_template_excel' %}'" class="hidden bg-blue-500 text-white px-3 py-1 rounded mt-2 ">Download Template Excel</button>
         </div>
         </div>
-<div class="map-upload-section"> 
+
+        <div class="map-section">
         <!-- Map TXT -->
-        <div id="map-section" class="hidden upload-section">
+        <div id="map-section" class="hidden upload-section" style="margin-top: 10px">
         <label for="map_txt">Alignment TXT File*</label>
         <input type="file" name="map_txt" id="map_txt" accept=".txt" />
         <div id="map_txt_status"></div>
@@ -425,31 +419,34 @@
         <label for="drp">DRP:</label>
         <input type="file" name="link_drpexcel" id="drp" />
         </div>
-</div>
-</div>
+
+        </div>
+        </div>
+
         <!-- DB Upload Section -->
         <div id="db-section" class="hidden upload-section" style="margin-top: 10px">
         <label for="db_file">Upload DB File:</label>
         <input type="file" id="db_file" name="db_file" accept=".accdb" />
-        <div id="db_status"></div>
+        <div id="db_status" class="hidden" ></div>
         <button type="button" id="upload_db_btn">Validate DB</button>
         </div>
 
-
+      
         <!-- Submit -->
         <div class="upload-btn">
         <button type="submit" id="submitBtn" disabled>Upload</button>
         </div>
-
       </form>
     </div>
   </div>
 </body>
+
 <script>
 $(document).ready(function () {
+    let txtMatchedCount = 0;
     let excelValidated = false;
     let txtValidated = false;
-    let excelCount = 0;
+    let dbSelected = false;  
 
     // Initially hide sections
     $("#map-section").addClass("hidden");
@@ -458,43 +455,22 @@ $(document).ready(function () {
     $("button[type=submit]").prop("disabled", true);
 
     $("#download_error_excel").hide();
-    $("#download_template_excel").hide();
+
+    $("#download_template_excel").on("click", function () {
+    // 🔹 If your template is a fixed file
+    
+    // 🔹 OR, if backend gives you dynamic template URL,
+    // replace it with Django URL:
+    // window.location.href = "{% url 'download_template_excel' %}";
+});
 
     function checkIfReadyToSubmit() {
-        const hasDbFile = $('input[name="has_db_file"]:checked').val();
-        
-        if (hasDbFile === "yes") {
-            // Check if DB file is actually selected
-            const dbFileInput = $("#db_file")[0];
-            const hasDbFileSelected = dbFileInput && dbFileInput.files.length > 0;
-            $("button[type=submit]").prop("disabled", !hasDbFileSelected);
-        } else if (hasDbFile === "no") {
-            // If user needs to validate files, check both validations
-            $("button[type=submit]").prop("disabled", !(excelValidated && txtValidated));
+        if (dbSelected) {
+            $("button[type=submit]").prop("disabled", false);
         } else {
-            // No option selected, keep disabled
-            $("button[type=submit]").prop("disabled", true);
+            $("button[type=submit]").prop("disabled", !(excelValidated && txtValidated));
         }
     }
-
-    // Call checkIfReadyToSubmit initially to ensure button is disabled
-    checkIfReadyToSubmit();
-
-    // Reset form state on page load
-    function resetFormState() {
-        excelValidated = false;
-        txtValidated = false;
-        excelCount = 0;
-        txtMatchedCount = 0;
-        $("#map_txt").prop("disabled", true);
-        $("button[type=submit]").prop("disabled", true);
-        $("#link_excel_msg").empty();
-        $("#map_txt_status").empty();
-        $("#upload_link_btn").addClass("hidden");
-    }
-
-    // Initialize form state
-    resetFormState();
 
     function showAdmCode(admCode) {
         $("#admcode-section").removeClass("hidden");
@@ -507,17 +483,57 @@ $(document).ready(function () {
         $("#admcode-display").text("");
         $('input[name="admcode"]').val("");
     }
+      // -------------------- DB file toggle --------------------
+$('input[name="has_db_file"]').on("change", function () {
+    if ($(this).val() === "yes") {
+        // ✅ Show only DB file section
+        $("#db-section").removeClass("hidden");
 
-    // -------------------- Status change --------------------
+        // ✅ Hide everything else
+        $("#link-excel-section").addClass("hidden");
+        $("#map-section").addClass("hidden");
+        $("#drp-section").addClass("hidden");
+
+        // Reset values
+        $("#link_excel").val("");
+        $("#map_txt").val("");
+        $("#drp").val("");
+        excelValidated = false;
+        txtValidated = false;
+        $("button[type=submit]").prop("disabled", true);
+
+    } else {
+        // ✅ Show Excel workflow
+        $("#link-excel-section").removeClass("hidden");
+        $("#db-section").addClass("hidden");
+        $("#map-section").addClass("hidden");
+        $("#drp-section").addClass("hidden");
+
+        $("#db_file").val("");
+    }
+});
+
+
+    // When DB file selected
+$("#db_file").on("change", function () {
+    // ❌ Don’t mark dbSelected = true on just selecting
+    dbSelected = false;   
+
+    // clear any previous validation message
+    $("#db_status").hide().html(""); 
+    
+    // keep submit button disabled until validation passes
+    $("button[type=submit]").prop("disabled", true);
+});
+
+
+    // Status change
     $("#status").on("change", function () {
         const status = $(this).val();
         $("#province").val("");
         $("#kabupaten").empty().append('<option value="">-- Select Kabupaten --</option>');
         hideAdmCode();
         $("#province-section, #kabupaten-section").addClass("hidden");
-        
-        // Reset form state when status changes
-        resetFormState();
 
         if (status === "province") {
             $("#province-section").removeClass("hidden");
@@ -526,7 +542,7 @@ $(document).ready(function () {
         }
     });
 
-    // -------------------- Province change --------------------
+    // Province change
     $("#province").on("change", function () {
         const status = $("#status").val();
         const selectedOption = $(this).find(":selected");
@@ -542,9 +558,8 @@ $(document).ready(function () {
             $("#kabupaten").empty().append('<option value="">-- Loading --</option>');
             if (provinceId) {
                 $.ajax({
-                    url: window.location.pathname,
+                    url: "{% url 'get_kabupatens' %}",
                     data: { province_id: provinceId },
-                    headers: { "X-Requested-With": "XMLHttpRequest" },
                     success: function (data) {
                         $("#kabupaten").empty().append('<option value="">-- Select Kabupaten --</option>');
                         $.each(data, function (index, item) {
@@ -557,19 +572,13 @@ $(document).ready(function () {
                                 </option>`
                             );
                         });
-
-                        //  Preselect kabupaten agar URL me diya ho
-                        const preKab = "{{ preselect_kabupaten|default:'' }}";
-                        if (preKab) {
-                            $("#kabupaten").val(preKab).trigger("change");
-                        }
-                    }
+                    },
                 });
             }
         }
     });
 
-    // -------------------- Kabupaten change --------------------
+    // Kabupaten change
     $("#kabupaten").on("change", function () {
         const selected = $(this).find(":selected");
         const admCode = selected.data("admcode");
@@ -581,55 +590,22 @@ $(document).ready(function () {
         if ($(this).val() === "yes") {
             $("#db-section").removeClass("hidden");
             $("#link-excel-section").addClass("hidden");
-            // Check if ready to submit (button will be disabled until file is selected)
-            checkIfReadyToSubmit();
+            $("#map_txt").val("");
+            $("#drp").val("");
+            $("#link_excel").val("");
         } else {
             $("#link-excel-section").removeClass("hidden");
             $("#db-section").addClass("hidden");
             $("#db_file").val("");
-            // Check if ready to submit based on file validations
-            checkIfReadyToSubmit();
         }
     });
 
-
-    // -------------------- DB file toggle --------------------
-    // -------------------- DB file toggle --------------------
-$('input[name="has_db_file"]').on("change", function () {
-    if ($(this).val() === "yes") {
-        //  Show only DB file section
-        $("#db-section").removeClass("hidden");
-
-        //  Hide everything else
-        $("#link-excel-section").addClass("hidden");
-        $("#map-section").addClass("hidden");
-        $("#drp-section").addClass("hidden");
-
-        // Reset values
-        $("#link_excel").val("");
-        $("#map_txt").val("");
-        $("#drp").val("");
-        excelValidated = false;
-        txtValidated = false;
-        $("button[type=submit]").prop("disabled", true);
-
-    } else {
-        //  Show Excel workflow
-        $("#link-excel-section").removeClass("hidden");
-        $("#db-section").addClass("hidden");
-        $("#map-section").addClass("hidden");
-        $("#drp-section").addClass("hidden");
-
-        $("#db_file").val("");
-    }
-});
-
-
-    // -------------------- Excel Upload Validation --------------------
+    // Show Excel upload btn
     $("#link_excel").on("change", function () {
         $("#upload_link_btn").show();
     });
 
+    // Excel Upload Validation
     $("#upload_link_btn").on("click", function () {
         let fileInput = $("#link_excel")[0];
         if (!fileInput.files.length) {
@@ -650,8 +626,9 @@ $('input[name="has_db_file"]').on("change", function () {
         fetch("{% url 'validate_link_excel' %}", { method: "POST", body: formData })
             .then(res => res.json())
             .then(data => {
+                // Reset download buttons
                 $("#download_error_excel").hide();
-                $("#download_template_excel").hide();
+               // $("#download_template_excel").hide();
 
                 $("#link_excel_msg")
                     .html(data.message)
@@ -660,6 +637,11 @@ $('input[name="has_db_file"]').on("change", function () {
                         "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
                         "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
                     });
+                    setTimeout(() => {
+                      $("#link_excel_msg").fadeOut("slow", function () {
+                        $(this).html("").removeAttr("style").css("display", "none");
+                          });
+                  }, 7000);
 
                 excelValidated = data.valid;
 
@@ -671,6 +653,7 @@ $('input[name="has_db_file"]').on("change", function () {
                     $("#map_txt").prop("disabled", true);
                     txtValidated = false;
 
+                    // If row-level errors exist
                     if (data.error_excel_url) {
                         $("#download_error_excel")
                             .show()
@@ -680,19 +663,195 @@ $('input[name="has_db_file"]').on("change", function () {
                             });
                     }
 
-                    if (data.template_excel_url) {
-                        $("#download_template_excel")
-                            .show()
-                            .off("click")
-                            .on("click", function () {
-                                window.location.href = data.template_excel_url;
-                            });
-                    }
+                    // If schema error exists
+                    //if (data.template_excel_url) {
+                      //  $("#download_template_excel")
+                        //    .show()
+                      //      .off("click")
+                         //   .on("click", function () {
+                       //         window.location.href = data.template_excel_url;
+                       //     });
+                   // }
                 }
                 checkIfReadyToSubmit();
             })
             .catch(err => alert(`Error uploading file: ${err.message || err}`));
     });
+
+
+     // TXT Upload Validation
+    $("#upload_map_txt").on("click", function () {
+        let fileInput = $("#map_txt")[0];
+        if (!fileInput.files.length) {
+            alert("Please select a TXT file first");
+            return;
+        }
+
+        $("#map_txt_status")
+            .show()
+            .html("Processing...")
+            .css({ "color": "orange", "background": "rgba(255,165,0,0.1)", "border": "1px solid orange" });
+
+        let formData = new FormData();
+        formData.append("map_txt", fileInput.files[0]);
+        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+
+        fetch("{% url 'validate_map_txt' %}", { method: "POST", body: formData })
+            .then(res => res.json())
+            .then(data => {
+                $("#map_txt_status")
+                    .html(data.message)
+                    .css({
+                        "color": data.valid ? "green" : "red",
+                        "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
+                        "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
+                    });
+                      setTimeout(() => {
+                      $("#map_txt_status").fadeOut("slow", function () {
+                        $(this).html("").removeAttr("style").css("display", "none");
+                          });
+                  }, 7000);
+
+                txtValidated = data.valid;
+
+                if (data.valid) {
+                    $("#drp-section").removeClass("hidden"); // DRP optional hai, show kar dete hain
+                } else {
+                    $("#drp-section").addClass("hidden");
+                }
+                checkIfReadyToSubmit();
+            })
+            .catch(err => alert("Error uploading TXT: " + err));
+    });
+
+    // DB Upload Validation
+    $("#upload_db_btn").on("click", function () {
+      let fileInput = $("#db_file")[0];
+      if (!fileInput.files.length) {
+          alert("Please select a DB file first");
+          return;
+      }
+
+      $("#db_status")
+          .show()
+          .html("Processing...")
+          .css({ "color": "orange", "background": "rgba(255,165,0,0.1)", "border": "1px solid orange" });
+
+      let formData = new FormData();
+      formData.append("db_file", fileInput.files[0]);
+      formData.append("admcode", $('input[name="admcode"]').val());
+      formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+
+      
+
+      fetch("{% url 'validate_db_file' %}", { method: "POST", body: formData })
+          .then(res => {
+              // 🟢 If backend returns FileResponse (Excel download), handle it
+              if (res.headers.get("Content-Type")?.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+                  let filename = res.headers.get("Content-Disposition")?.split("filename=")[1] || "validation_report.xlsx";
+                  return res.blob().then(blob => {
+                      let url = window.URL.createObjectURL(blob);
+                      let a = document.createElement("a");
+                      a.href = url;
+                      a.download = filename.replace(/"/g, '');
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+
+                      $("#db_status")
+                          .html("Invalid File : Your Validation error report has been downloaded.")
+                          .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
+                          setTimeout(() => {
+                        $("#db_status").fadeOut("slow", function () {
+                          $(this).html("").removeAttr("style").css("display", "none");
+                            });
+                    }, 7000);
+
+                      dbSelected = false; // force user to re-check after errors
+                      checkIfReadyToSubmit();
+                  });
+              }
+              return res.json();
+          })
+          .then(data => {
+              if (!data) return;
+
+              $("#db_status")
+                  .html(data.message)
+                  .css({
+                      "color": data.valid ? "green" : "red",
+                      "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
+                      "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
+                  });
+                  setTimeout(() => {
+                        $("#db_status").fadeOut("slow", function () {
+                          $(this).html("").removeAttr("style").css("display", "none");
+                            });
+                    }, 7000);
+
+              if (data.valid) {
+                  dbSelected = true; // ✅ Validation passed
+              } else {
+                  dbSelected = false;
+              }
+
+              checkIfReadyToSubmit();
+          })
+          .catch(err => {
+              $("#db_status")
+                  .html("Error validating DB: " + err)
+                  .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
+          });
+    });
+
+
+    // Confirm before submit
+    $("form").on("submit", function (e) {
+        const status = $("#status").val();
+        const province = $("#province").val();
+        const kabupaten = $("#kabupaten").val();
+        const admCodeVisible = !$("#admcode-section").hasClass("hidden");
+
+        if (!status) {
+            alert("Please select Status");
+            e.preventDefault();
+            return;
+        }
+
+        if (status === "province" && !province) {
+            alert("Please select Province");
+            e.preventDefault();
+            return;
+        }
+
+        if (status === "kabupaten" && (!province || !kabupaten)) {
+            alert("Please select both Province and Kabupaten");
+            e.preventDefault();
+            return;
+        }
+
+        if (!admCodeVisible) {
+            alert("Adm Code not generated. Please select valid location.");
+            e.preventDefault();
+            return;
+        }
+
+        // 🔹 Skip Excel/TXT check if DB file flow is selected
+        if (!dbSelected) {
+            if (!excelValidated || !txtValidated) {
+                e.preventDefault();
+                alert("Please validate both Excel and TXT files before submitting.");
+                return;
+            }
+        }
+
+        let confirmMsg = `You sure you want to submit?`;
+        if (!confirm(confirmMsg)) {
+            e.preventDefault();
+        }
+    });
+});
+
 // ====================== Form Validation (Name/Email/Phone) ======================
 const nameField = document.getElementById("lgName");
 const emailField = document.getElementById("emailId");
@@ -729,443 +888,6 @@ function validatePhone() {
     return true;
 }
 
-// Helper function
-function validateFormFields() {
-    return validateName() && validateEmail() && validatePhone();
-}
-
-// Live validation
-nameField.addEventListener("input", validateName);
-emailField.addEventListener("input", validateEmail);
-phoneField.addEventListener("input", validatePhone);
-
-// Stop form submit if invalid
-document.getElementById("myForm").addEventListener("submit", function(e) {
-    if (!validateFormFields()) {
-        e.preventDefault();
-        alert("Please correct Name, Email, and Phone before submitting.");
-    }
-});
-
-// Block Upload buttons if invalid
-document.getElementById("upload_link_btn").addEventListener("click", function(e) {
-    if (!validateFormFields()) {
-        e.preventDefault();
-        alert("Please fill Name, Email, and Phone correctly before uploading Excel.");
-        return;
-    }
-    // Excel upload code continues here...
-});
-
-document.getElementById("upload_map_txt").addEventListener("click", function(e) {
-    if (!validateFormFields()) {
-        e.preventDefault();
-        alert("Please fill Name, Email, and Phone correctly before uploading TXT.");
-        return;
-    }
-    
-});
-
-    // -------------------- TXT Upload Validation --------------------
-    $("#upload_map_txt").on("click", function () {
-        let fileInput = $("#map_txt")[0];
-        if (!fileInput.files.length) {
-            alert("Please select a TXT file first");
-            return;
-        }
-
-        $("#map_txt_status")
-            .show()
-            .html("Processing...")
-            .css({ "color": "orange", "background": "rgba(255,165,0,0.1)", "border": "1px solid orange" });
-
-        let formData = new FormData();
-        formData.append("map_txt", fileInput.files[0]);
-        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
-
-        fetch("{% url 'validate_map_txt' %}", { method: "POST", body: formData })
-            .then(res => res.json())
-            .then(data => {
-                $("#map_txt_status")
-                    .html(data.message)
-                    .css({
-                        "color": data.valid ? "green" : "red",
-                        "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
-                        "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
-                    });
-
-                txtValidated = data.valid;
-
-                if (data.valid) {
-                    $("#drp-section").removeClass("hidden");
-                } else {
-                    $("#drp-section").addClass("hidden");
-                }
-                checkIfReadyToSubmit();
-            })
-            .catch(err => alert("Error uploading TXT: " + err));
-    });
-
-    // -------------------- Form Submit Confirm --------------------
-    $("form").on("submit", function (e) {
-        const status = $("#status").val();
-        const province = $("#province").val();
-        const kabupaten = $("#kabupaten").val();
-        const admCodeVisible = !$("#admcode-section").hasClass("hidden");
-        const hasDbFile = $('input[name="has_db_file"]:checked').val();
-
-        if (!status) {
-            alert("Please select Status");
-            e.preventDefault();
-            return;
-        }
-
-        if (status === "province" && !province) {
-            alert("Please select Province");
-            e.preventDefault();
-            return;
-        }
-
-        if (status === "kabupaten" && (!province || !kabupaten)) {
-            alert("Please select both Province and Kabupaten");
-            e.preventDefault();
-            return;
-        }
-
-        if (!admCodeVisible) {
-            alert("Adm Code not generated. Please select valid location.");
-            e.preventDefault();
-            return;
-        }
-
-        // Check if user has DB file or needs to validate Excel/TXT
-        if (hasDbFile === "yes") {
-            // Check if DB file is actually selected
-            const dbFileInput = $("#db_file")[0];
-            if (!dbFileInput || !dbFileInput.files.length) {
-                e.preventDefault();
-                alert("Please select a DB file before submitting.");
-                return;
-            }
-            
-            // Prevent default form submission for DB file mode
-            e.preventDefault();
-            
-            // Show processing message
-            showDbFileStatus("Processing database file...", "processing");
-            
-            // Submit DB file for validation
-            submitDbFileForValidation(dbFileInput.files[0]);
-            return;
-        } else if (hasDbFile === "no") {
-            // User needs to validate Excel and TXT files
-            if (!excelValidated || !txtValidated) {
-                e.preventDefault();
-                alert("Please validate both Excel and TXT files before submitting.");
-                return;
-            }
-        } else {
-            // No option selected
-            e.preventDefault();
-            alert("Please select whether you have a DB file or not.");
-            return;
-        }
-
-        if (!confirm("You sure you want to submit?")) {
-            e.preventDefault();
-        }
-    });
-
-    // ====================== DB File Submission Handler ======================
-    // DB file selection change - just enable/disable submit button
-    $("#db_file").on("change", function() {
-        checkIfReadyToSubmit();
-    });
-
-    // Validate DB button click handler
-    $("#upload_db_btn").on("click", function() {
-        const dbFileInput = $("#db_file")[0];
-        if (!dbFileInput || !dbFileInput.files.length) {
-            alert("Please select a DB file first");
-            return;
-        }
-
-        // Show processing message
-        showDbFileStatus("Processing database file...", "processing");
-        
-        // Submit DB file for validation
-        submitDbFileForValidation(dbFileInput.files[0]);
-    });
-
-
-
-    function submitDbFileForValidation(file) {
-        const formData = new FormData();
-        formData.append("db_file", file);
-        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
-
-        fetch("{% url 'validate_db_file' %}", {
-            method: "POST",
-            body: formData
-        })
-        .then(response => {
-            console.log("Response status:", response    ); // Debug log
-            if (response.headers.get('content-type') && response.headers.get('content-type').includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-                // Excel file returned - show error message with download button
-                return response.blob().then(blob => {
-                    showDbFileStatus(" Database validation failed! The database contains errors in data. Please view the Excel file for detailed information.", "error");
-                    showExcelDownloadButton(blob, response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'validation_results.xlsx');
-                });
-            } else {
-                // JSON response returned
-                return response.json();
-            }
-        })
-        .then(data => {
-            console.log("Database validation response:", data); // Debug log
-            if (data && typeof data === 'object') {
-                if (data.valid) {
-                      showDbFileStatus("Database validation completed successfully! No errors found.", "success");
-                } else {
-                    // Validation failed
-                    showDbFileStatus(` ${data.message}`, "error");
-                }
-            }
-        })
-        .catch(error => {
-            console.error("Error:", error);
-            showDbFileStatus(" Error processing database file. Please try again.", "error");
-        });
-    }
-
-    function showDbFileStatus(message, type) {
-        // Remove existing status if any
-        $("#db_file_status").remove();
-        
-        // Create status element
-        const statusDiv = $('<div id="db_file_status"></div>');
-        
-        // Set styling based on type
-        switch(type) {
-            case "processing":
-                statusDiv.css({
-                    "color": "orange",
-                    "background": "rgba(255, 165, 0, 0.1)",
-                    "font-size": "14px",
-                    "border": "1px solid orange",
-                    "padding": "15px",
-                    "border-radius": "6px",
-                    "margin-top": "10px",
-                    "display": "flex",
-                    "align-items": "center",
-                    "gap": "10px"
-                });
-                // Add spinning loader
-                statusDiv.html(`
-                    <div class="spinner" style="
-                        width: 20px;
-                        height: 20px;
-                        border: 2px solid orange;
-                        border-top: 2px solid transparent;
-                        border-radius: 50%;
-                        animation: spin 1s linear infinite;
-                    "></div>
-                    <span>${message}</span>
-                `);
-                break;
-            case "success":
-                statusDiv.css({
-                    "color": "#04a16d",
-                    "background": "rgba(4, 161, 109, 0.1)",
-                    "font-size": "14px",
-                    "border": "1px solid #04a16d",
-                    "padding": "15px",
-                    "border-radius": "6px",
-                    "margin-top": "10px",
-                    "display": "flex",
-                    "align-items": "center",
-                    "gap": "10px"
-                });
-                statusDiv.html(`<span style="font-size: 18px;"></span> <span>${message}</span>`);
-                break;
-            case "error":
-                statusDiv.css({
-                    "color": "#ef4444",
-                    "background": "rgba(239, 68, 68, 0.1)",
-                    "font-size": "14px",
-                    "border": "1px solid #ef4444",
-                    "padding": "15px",
-                    "border-radius": "6px",
-                    "margin-top": "10px",
-                    "display": "flex",
-                    "align-items": "center",
-                    "gap": "10px"
-                });
-                statusDiv.html(`<span style="font-size: 18px;"></span> <span>${message}</span>`);
-                break;
-        }
-        
-        $("#db-section").after(statusDiv);
-    }
-
-    function showExcelDownloadButton(blob, filename) {
-        // Remove existing download button if any
-        $("#excel_download_btn").remove();
-        
-        // Create download button
-        const downloadBtn = $('<button id="excel_download_btn" type="button" style="background: #ef4444; margin-top: 10px;">📥 Download Validation Report (Excel)</button>');
-        
-        downloadBtn.on("click", function() {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            // Show download success message briefly, then reload page
-            showDbFileStatus("Excel file downloaded successfully! Reloading page...", "success");
-            
-            // Reload page after 2 seconds
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        });
-        
-        $("#db_file_status").after(downloadBtn);
-    }
-
-    function showSharePointInfo(sharepointData, driveLink, fileName) {
-        // Remove existing SharePoint info if any
-        $("#sharepoint_info").remove();
-        
-        // Create SharePoint info element
-        const infoDiv = $('<div id="sharepoint_info"></div>');
-        infoDiv.css({
-            "background": "rgba(59, 130, 246, 0.1)",
-            "border": "1px solid #3b82f6",
-            "border-radius": "6px",
-            "padding": "15px",
-            "margin-top": "10px"
-        });
-        
-        infoDiv.html(`
-            <h4 style="color: #3b82f6; margin: 0 0 10px 0;">📁 SharePoint Upload Successful</h4>
-            <p style="margin: 5px 0; color: #1e293b;"><strong>File:</strong> ${fileName || sharepointData.original_filename || 'database.accdb'}</p>
-            <p style="margin: 5px 0; color: #1e293b;"><strong>Status:</strong> ${sharepointData.upload_status}</p>
-            <p style="margin: 5px 0; color: #1e293b;"><strong>Upload Time:</strong> ${new Date().toLocaleString()}</p>
-            <div style="margin: 15px 0; padding: 10px; background: rgba(59, 130, 246, 0.05); border-radius: 4px;">
-                <p style="margin: 5px 0; color: #1e293b;"><strong>SharePoint Drive Link:</strong></p>
-                <a href="${driveLink || sharepointData.sharepoint_url}" target="_blank" style="color: #3b82f6; text-decoration: underline; word-break: break-all;">
-                    🔗 ${driveLink || sharepointData.sharepoint_url}
-                </a>
-            </div>
-            <div style="margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap;">
-                <a href="${driveLink || sharepointData.sharepoint_url}" target="_blank" style="color: #3b82f6; text-decoration: underline; padding: 8px 16px; border: 1px solid #3b82f6; border-radius: 4px; background: rgba(59, 130, 246, 0.1);">
-                    🔗 Access SharePoint Drive
-                </a>
-                <button onclick="copyToClipboard('${driveLink || sharepointData.sharepoint_url}')" style="padding: 8px 16px; border: 1px solid #04a16d; border-radius: 4px; background: rgba(4, 161, 109, 0.1); color: #04a16d; cursor: pointer;">
-                    📋 Copy Drive Link
-                </button>
-            </div>
-        `);
-        
-        $("#db_file_status").after(infoDiv);
-    }
-
-    // Function to copy text to clipboard
-    window.copyToClipboard = function(text) {
-        if (navigator.clipboard && window.isSecureContext) {
-            // Use modern clipboard API
-            navigator.clipboard.writeText(text).then(function() {
-                // Show success message
-                const button = event.target;
-                const originalText = button.innerHTML;
-                button.innerHTML = " Copied!";
-                button.style.background = "rgba(4, 161, 109, 0.2)";
-                button.style.borderColor = "#04a16d";
-                
-                setTimeout(() => {
-                    button.innerHTML = originalText;
-                    button.style.background = "rgba(4, 161, 109, 0.1)";
-                    button.style.borderColor = "#04a16d";
-                }, 2000);
-            }).catch(function(err) {
-                console.error('Could not copy text: ', err);
-                alert('Failed to copy link to clipboard');
-            });
-        } else {
-            // Fallback for older browsers
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
-            textArea.style.top = "-999999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                document.execCommand('copy');
-                const button = event.target;
-                const originalText = button.innerHTML;
-                button.innerHTML = " Copied!";
-                button.style.background = "rgba(4, 161, 109, 0.2)";
-                button.style.borderColor = "#04a16d";
-                
-                setTimeout(() => {
-                    button.innerHTML = originalText;
-                    button.style.background = "rgba(4, 161, 109, 0.1)";
-                    button.style.borderColor = "#04a16d";
-                }, 2000);
-            } catch (err) {
-                console.error('Fallback: Oops, unable to copy', err);
-                alert('Failed to copy link to clipboard');
-            }
-            
-            document.body.removeChild(textArea);
-        }
-    };
-});
-
-// ====================== Form Validation (Name/Email/Phone) ======================
-const nameField = document.getElementById("lgName");
-const emailField = document.getElementById("emailId");
-const phoneField = document.getElementById("phoneNumber");
-
-const nameError = document.getElementById("nameError");
-const emailError = document.getElementById("emailError");
-const phoneError = document.getElementById("phoneError");
-
-function validateName() {
-    if (!/^[A-Za-z\s]{2,}$/.test(nameField.value.trim())) {
-        nameError.textContent = "Enter a valid name (letters only)";
-        return false;
-    }
-    nameError.textContent = "";
-    return true;
-}
-
-function validateEmail() {
-    if (!/^\S+@\S+\.\S+$/.test(emailField.value.trim())) {
-        emailError.textContent = "Enter a valid email";
-        return false;
-    }
-    emailError.textContent = "";
-    return true;
-}
-
-function validatePhone() {
-    if (!/^\d{10}$/.test(phoneField.value.trim())) {
-        phoneError.textContent = "Enter 10-digit phone";
-        return false;
-    }
-    phoneError.textContent = "";
-    return true;
-}
-
 nameField.addEventListener("input", validateName);
 emailField.addEventListener("input", validateEmail);
 phoneField.addEventListener("input", validatePhone);
@@ -1175,9 +897,6 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
         e.preventDefault();
     }
 });
-
-
-
 </script>
 
 
