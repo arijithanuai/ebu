@@ -60,12 +60,12 @@ def location_selector(request):
     token = request.GET.get('token', None)
     print(token)
     if not token:
-        return HttpResponseForbidden("Token is missing or invalid.")
+        return HttpResponseForbidden("Direct access is not allowed")
 
     # Decode the token
     token_data = decode_token(token)
     if not token_data:
-        return HttpResponseForbidden("Invalid token.")
+        return HttpResponseForbidden("Invalid token")
 
     admin_code = token_data.get('adminCode')  # e.g. "IDN-52-00"
     user_role = token_data.get('userRole')    # "province_lg" / "kabupaten_lg"
