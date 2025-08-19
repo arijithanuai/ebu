@@ -120,7 +120,7 @@ def validate_traffic_volume(df: pd.DataFrame, df_link: pd.DataFrame = None) -> p
     - Ensures required columns are non-empty per row
     - Validates data types for known fields
     - Validates Link_No exists in Link table
-    - Validates Link_No uniqueness (one record per link)
+    - Validates (Link_No, Year) uniqueness (one record per link per year)
     - Handles empty database scenario
 
     Returns a DataFrame with the same columns as input plus:
@@ -156,17 +156,22 @@ def validate_traffic_volume(df: pd.DataFrame, df_link: pd.DataFrame = None) -> p
             columns=["Record_No"] + list(df.columns) + ["Validation_Message"],
         )
 
-    # 2) Check Link_No uniqueness
-    if "Link_No" in df.columns:
-        link_no_counts = df["Link_No"].value_counts()
-        duplicate_links = link_no_counts[link_no_counts > 1].index.tolist()
-        if duplicate_links:
-            for link_no in duplicate_links:
-                duplicate_rows = df[df["Link_No"] == link_no]
+    # 2) Check (Link_No, Year) uniqueness → allow multiple Link_No entries across different years
+    if "Link_No" in df.columns and "Year" in df.columns:
+        # Count occurrences of each (Link_No, Year) pair
+        pair_counts = (
+            df.groupby(["Link_No", "Year"]).size()
+        )
+        duplicate_pairs = pair_counts[pair_counts > 1].index.tolist()
+        if duplicate_pairs:
+            for link_no, year in duplicate_pairs:
+                duplicate_rows = df[(df["Link_No"] == link_no) & (df["Year"] == year)]
                 for idx, row in duplicate_rows.iterrows():
                     new_row = row.copy()
                     new_row["Record_No"] = idx + 1
-                    new_row["Validation_Message"] = f"Link_No '{link_no}' is duplicated - only one record per link is allowed"
+                    new_row["Validation_Message"] = (
+                        f"Duplicate record for Link_No '{link_no}' and Year '{year}' - only one record per link per year is allowed"
+                    )
                     errors.append(new_row)
 
     # 3) Row-wise validations

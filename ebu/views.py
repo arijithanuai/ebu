@@ -1,3 +1,4 @@
+
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from .models import Province, Kabupaten, Link, User, DrpFile, DBfile
@@ -15,7 +16,7 @@ from django.urls import reverse
 import base64
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .models import Province, Kabupaten, Link, User, DrpFile,DBfile
+from .models import Province, Kabupaten, Link, User, DrpFile, DBfile, Alignment
 from .forms import UserForm
 import csv
 import sys
@@ -42,65 +43,72 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 
 # Decode and verify token
-# def decode_token(token):
-#     try:
-#         # Decode the base64 token
-#         decoded_data = base64.b64decode(token).decode('utf-8')
-#         # Parse the JSON data from the decoded token
-#         token_data = json.loads(decoded_data)
-#         return token_data
-#     except Exception as e:
-#         print(f"Error decoding token: {e}")
-#         return None
+def decode_token(token):
+    try:
+        # Decode the base64 token
+        decoded_data = base64.b64decode(token).decode('utf-8')
+        # Parse the JSON data from the decoded token
+        token_data = json.loads(decoded_data)
+        return token_data
+    except Exception as e:
+        print(f"Error decoding token: {e}")
+        return None
+
 
 def location_selector(request):
-    # token = request.GET.get('token',None)
-    # print(token)
-    # if not token:
-    #     return HttpResponseForbidden("Token is missing or invalid.")
+    # ---------------- Token Handling ----------------
+    token = request.GET.get('token', None)
+    print(token)
+    if not token:
+        return HttpResponseForbidden("Token is missing or invalid.")
 
-    # # Decode the token
-    # token_data = decode_token(token)
-    # print(token_data)
+    # Decode the token
+    token_data = decode_token(token)
+    if not token_data:
+        return HttpResponseForbidden("Invalid token.")
 
-    # if not token_data:
-    #     return HttpResponseForbidden("Invalid token.")
-    # admin_code = token_data.get('adminCode')
-    # user_role = token_data.get('userRole')
-    # print(admin_code)
+    admin_code = token_data.get('adminCode')  # e.g. "IDN-52-00"
+    user_role = token_data.get('userRole')    # "province_lg" / "kabupaten_lg"
 
-    # # split the adminCode
-    # parts = token_data["adminCode"].split("-")
+    # Split adminCode → extract province + kabupaten codes
+    parts = admin_code.split("-")
+    pCode = parts[1]  # province code, e.g. "52"
+    kCode = parts[2]  # kabupaten code, e.g. "00"
 
-    # pCode = parts[1]  # "52"
-    # kCode = parts[2]  # "00"
-    # status = token_data["userRole"]
+    # Map role → status
+    if user_role == "province_lg":
+        status = "province"
+    elif user_role == "kabupaten_lg":
+        status = "kabupaten"
+    else:
+        status = ""
 
-    # result = {
-    #     "pCode": pCode,
-    #     "kCode": kCode,
-    #     "status": status
-    # }
-
-    # print(result)
-
-    
+    # ---------------- Preselect Province & Kabupaten ----------------
     provinces = Province.objects.all()
 
+    province_obj = Province.objects.filter(pCode=pCode).first()
+    preselect_province = province_obj.id if province_obj else ""
+
+    preselect_kabupaten = ""
+    if status == "kabupaten" and province_obj:
+        kab_obj = Kabupaten.objects.filter(province=province_obj, kCode=kCode).first()
+        preselect_kabupaten = kab_obj.id if kab_obj else ""
+
+    # ---------------- Handle POST (form submit) ----------------
     if request.method == 'POST':
-        # ---- Save user info from plain HTML form ----
         admcode = request.POST.get('admcode')
         lgName = request.POST.get('lgName')
         emailId = request.POST.get('emailId')
         phoneNumber = request.POST.get('phoneNumber')
-        
+
+        # Save user info
         user_obj = User.objects.create(
             admcode=admcode,
             lgName=lgName,
             emailId=emailId,
             phoneNumber=phoneNumber
         )
-    
+
         # ----- Save Excel Data -----
         excel_linkcodes = set()
         file_content = request.session.get('validated_file')
@@ -124,48 +132,33 @@ def location_selector(request):
             ]
             Link.objects.bulk_create(links_to_create, ignore_conflicts=True)
             del request.session['validated_file']
-            messages.success(
-                request,
-                f"  Link data uploaded successfully! {len(links_to_create)} records saved."
-            )
+            messages.success(request, f"✅ Link data uploaded successfully! {len(links_to_create)} records saved.")
 
-        # ----- Save TXT Data (match by linkCode) -----
+        # ----- Save TXT Data (alignment) -----
         txt_content = request.session.get("validated_txt")
         if txt_content:
             txt_link_data = json.loads(txt_content)
-
-            from .models import Alignment
             alignments_to_create = []
 
-            # Get mapping: linkCode → Link object
-            link_map = {
-                l.linkCode: l
-                for l in Link.objects.filter(linkCode__in=excel_linkcodes)
-            }
+            # Mapping linkCode → Link object
+            link_map = {l.linkCode: l for l in Link.objects.filter(linkCode__in=excel_linkcodes)}
 
             for linkcode, line_wkt in txt_link_data:
                 if linkcode in link_map:
-                    # Convert TXT WKT to GEOSGeometry
                     geom = GEOSGeometry(line_wkt, srid=4326)
-
                     alignments_to_create.append(
                         Alignment(admCode=admcode, linkNo=link_map[linkcode], linkGeometry=geom)
                     )
 
             if alignments_to_create:
                 Alignment.objects.bulk_create(alignments_to_create, ignore_conflicts=True)
-                messages.success(
-                    request,
-                    f"  Alignment data uploaded successfully! {len(alignments_to_create)} records saved."
-                )
+                messages.success(request, f"✅ Alignment data uploaded successfully! {len(alignments_to_create)} records saved.")
             else:
-                messages.warning(
-                    request,
-                    "⚠ No matching LinkCode found between TXT and Excel data."
-                )
+                messages.warning(request, "⚠ No matching LinkCode found between TXT and Excel data.")
 
             del request.session['validated_txt']
 
+        # ----- Save DRP File -----
         if request.FILES.get("link_drpexcel"):
             drp_file = request.FILES["link_drpexcel"]
             DrpFile.objects.create(admCode=admcode, drpFile=drp_file)
@@ -177,12 +170,19 @@ def location_selector(request):
             DBfile.objects.create(admCode=admcode, fileUrl=db_file)
             messages.success(request, f"✅ DB file uploaded successfully: {db_file.name}")
 
+        return redirect('done')
 
-        return redirect('select_location')
+    # ---------------- GET request → Render form ----------------
+    return render(request, 'pk.html', {
+        'provinces': provinces,
+        "preselect_status": status,
+        "preselect_province": preselect_province,
+        "preselect_kabupaten": preselect_kabupaten,
+    })
 
-    # GET request
-    return render(request, 'pk.html', {'provinces': provinces})
 
+def data_updated(request):
+    return render(request, "done.html")
 
 def get_kabupatens(request):
     province_id = request.GET.get('province_id')

@@ -20,8 +20,9 @@ def validate_row(row):
     elif not str(row["Province_Code"]).isalpha() and not str(row["Province_Code"]).isdigit():
         errors["Province_Code"] = "invalid format"
     
-    # Kabupaten_Code - Short Text
-    if not row["Kabupaten_Code"]:
+    # Kabupaten_Code - Short Text (allow numeric 0)
+    kc = row.get("Kabupaten_Code")
+    if kc is None or (isinstance(kc, str) and kc.strip() == ""):
         errors["Kabupaten_Code"] = "missing"
     
     # Link_No - Short Text
