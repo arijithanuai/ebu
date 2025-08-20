@@ -580,4 +580,5 @@ def get_validation_summary(excel_file_path):
         return {}, 0
     
     
-    
+def custom_403_view(request, exception=None):
+    return render(request, '403.html', status=403)

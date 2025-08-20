@@ -60,7 +60,7 @@ def location_selector(request):
     token = request.GET.get('token', None)
     print(decode_token(token))
     if not token:
-        return HttpResponseForbidden("Direct access is not allowed")
+        return render(request, '403.html', status=403)
 
     # Decode the token
     token_data = decode_token(token)
