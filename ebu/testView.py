@@ -164,7 +164,7 @@ def location_selector(request):
         return redirect('select_location')
 
     # GET request
-    return render(request, 'pk.html', {'provinces': provinces})
+    return render(request, 'pk_token.html', {'provinces': provinces})
 
 
 def get_kabupatens(request):
