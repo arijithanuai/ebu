@@ -2174,19 +2174,19 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
         <div class="input-fields">
           <div>
             <label for="lgName">LG Name:</label>
-            <input type="text" name="lgName" id="lgName" placeholder="Enter LG Name" class="form-control" required>
+            <input type="text" name="lgName" id="lgName" placeholder="Enter LG Name" class="form-control" value="{{ lg_user_name }}" disabled>
             <span class="error" id="nameError"></span>
           </div>
 
           <div>
             <label for="emailId">Email:</label>
-            <input type="email" name="emailId" id="emailId" placeholder="Enter Email Address" class="form-control" required>
+            <input type="email" name="emailId" id="emailId" placeholder="Enter Email Address" class="form-control" value="{{ lg_email }}" disabled>
             <span class="error" id="emailError"></span>
           </div>
 
           <div>
             <label for="phoneNumber">Phone:</label>
-            <input type="text" name="phoneNumber" id="phoneNumber" placeholder="Enter Phone Number" class="form-control" required>
+            <input type="text" name="phoneNumber" id="phoneNumber" placeholder="Enter Phone Number" class="form-control" value="{{ lg_ph_no }}" disabled>
             <span class="error" id="phoneError"></span>
           </div>
         </div>
@@ -2204,7 +2204,7 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
         <!-- Link Excel -->
         <div id="link-excel-section" class="hidden" style="margin-top: 10px">
         <div class="upload-section"> 
-            <label for="link_excel">Link Excel File</label>
+            <label for="link_excel">Link Excel File (.xlsx file)</label>
             <input type="file" name="link_excel" id="link_excel" accept=".xlsx,.xls" />
             <div id="link_excel_msg"></div>
             <button type="button" id="upload_link_btn" class="hidden">Validate Excel</button>
@@ -2417,80 +2417,6 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
         $("#upload_link_btn").show();
     });
 
-    // Excel Upload Validation
-    $("#upload_link_btn").on("click", function () {
-        let fileInput = $("#link_excel")[0];
-        if (!fileInput.files.length) {
-            alert("Please select a file first");
-            return;
-        }
-
-        $("#link_excel_msg")
-            .show()
-            .html("Processing...")
-            .css({ "color": "orange", "background": "rgba(255,165,0,0.1)", "border": "1px solid orange" });
-
-        let formData = new FormData();
-        formData.append("link_excel", fileInput.files[0]);
-        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
-        formData.append("admcode", $('input[name="admcode"]').val());
-
-        fetch("{% url 'validate_link_excel' %}", { method: "POST", body: formData })
-            .then(res => res.json())
-            .then(data => {
-                // Reset download buttons
-                $("#download_error_excel").hide();
-               // $("#download_template_excel").hide();
-
-                $("#link_excel_msg")
-                    .html(data.message)
-                    .css({
-                        "color": data.valid ? "green" : "red",
-                        "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
-                        "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
-                    });
-                    setTimeout(() => {
-                      $("#link_excel_msg").fadeOut("slow", function () {
-                        $(this).html("").removeAttr("style").css("display", "none");
-                          });
-                  }, 7000);
-
-                excelValidated = data.valid;
-
-                if (data.valid) {
-                    $("#map-section").removeClass("hidden");
-                    $("#map_txt").prop("disabled", false);
-                } else {
-                    $("#map-section").addClass("hidden");
-                    $("#map_txt").prop("disabled", true);
-                    txtValidated = false;
-
-                    // If row-level errors exist
-                    if (data.error_excel_url) {
-                        $("#download_error_excel")
-                            .show()
-                            .off("click")
-                            .on("click", function () {
-                                window.location.href = data.error_excel_url;
-                            });
-                    }
-
-                    // If schema error exists
-                    //if (data.template_excel_url) {
-                      //  $("#download_template_excel")
-                        //    .show()
-                      //      .off("click")
-                         //   .on("click", function () {
-                       //         window.location.href = data.template_excel_url;
-                       //     });
-                   // }
-                }
-                checkIfReadyToSubmit();
-            })
-            .catch(err => alert(`Error uploading file: ${err.message || err}`));
-    });
-
-
      // TXT Upload Validation
     $("#upload_map_txt").on("click", function () {
         let fileInput = $("#map_txt")[0];
@@ -2509,7 +2435,18 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
         formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
         fetch("{% url 'validate_map_txt' %}", { method: "POST", body: formData })
-            .then(res => res.json())
+            .then(res => {
+                const contentType = res.headers.get("Content-Type") || "";
+
+                if (contentType.includes("application/json")) {
+                    return res.json();
+                } else {
+                    // Likely HTML error (404/500/CSRF fail)
+                    return res.text().then(text => {
+                        throw new Error("Unexpected response:\n" + text.slice(0, 200));
+                    });
+                }
+            })
             .then(data => {
                 $("#map_txt_status")
                     .html(data.message)
@@ -2518,22 +2455,28 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
                         "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
                         "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
                     });
-                      setTimeout(() => {
-                      $("#map_txt_status").fadeOut("slow", function () {
+
+                setTimeout(() => {
+                    $("#map_txt_status").fadeOut("slow", function () {
                         $(this).html("").removeAttr("style").css("display", "none");
-                          });
-                  }, 7000);
+                    });
+                }, 7000);
 
                 txtValidated = data.valid;
 
                 if (data.valid) {
-                    $("#drp-section").removeClass("hidden"); // DRP optional hai, show kar dete hain
+                    $("#drp-section").removeClass("hidden");
                 } else {
                     $("#drp-section").addClass("hidden");
                 }
                 checkIfReadyToSubmit();
             })
-            .catch(err => alert("Error uploading TXT: " + err));
+            .catch(err => {
+                $("#map_txt_status")
+                    .html("Error validating TXT: " + err.message)
+                    .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
+            });
+
     });
 
     // DB Upload Validation
@@ -2554,67 +2497,68 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
       formData.append("admcode", $('input[name="admcode"]').val());
       formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
-      
-
       fetch("{% url 'validate_db_file' %}", { method: "POST", body: formData })
-          .then(res => {
-              // 🟢 If backend returns FileResponse (Excel download), handle it
-              if (res.headers.get("Content-Type")?.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
-                  let filename = res.headers.get("Content-Disposition")?.split("filename=")[1] || "validation_report.xlsx";
-                  return res.blob().then(blob => {
-                      let url = window.URL.createObjectURL(blob);
-                      let a = document.createElement("a");
-                      a.href = url;
-                      a.download = filename.replace(/"/g, '');
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
+        .then(res => {
+            const contentType = res.headers.get("Content-Type") || "";
 
-                      $("#db_status")
-                          .html("Invalid File : Your Validation error report has been downloaded.")
-                          .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
-                          setTimeout(() => {
-                        $("#db_status").fadeOut("slow", function () {
-                          $(this).html("").removeAttr("style").css("display", "none");
-                            });
-                    }, 7000);
+            if (contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+                // Excel file download
+                let filename = res.headers.get("Content-Disposition")?.split("filename=")[1] || "validation_report.xlsx";
+                return res.blob().then(blob => {
+                    let url = window.URL.createObjectURL(blob);
+                    let a = document.createElement("a");
+                    a.href = url;
+                    a.download = filename.replace(/"/g, '');
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
 
-                      dbSelected = false; // force user to re-check after errors
-                      checkIfReadyToSubmit();
-                  });
-              }
-              return res.json();
-          })
-          .then(data => {
-              if (!data) return;
+                    $("#db_status").html("Invalid File : Validation error report downloaded.")
+                        .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
+                    setTimeout(() => $("#db_status").fadeOut("slow", function () {
+                        $(this).html("").removeAttr("style").css("display", "none");
+                    }), 7000);
 
-              $("#db_status")
-                  .html(data.message)
-                  .css({
-                      "color": data.valid ? "green" : "red",
-                      "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
-                      "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
-                  });
-                  setTimeout(() => {
-                        $("#db_status").fadeOut("slow", function () {
-                          $(this).html("").removeAttr("style").css("display", "none");
-                            });
-                    }, 7000);
+                    dbSelected = false;
+                    checkIfReadyToSubmit();
+                });
+            } 
+            else if (contentType.includes("application/json")) {
+                // Normal JSON response
+                return res.json();
+            } 
+            else {
+                // Probably an HTML error page → return null
+                return res.text().then(text => {
+                    throw new Error("Unexpected response:\n" + text.slice(0, 200));
+                });
+            }
+        })
+        .then(data => {
+            if (!data) return;
 
-              if (data.valid) {
-                  dbSelected = true; // ✅ Validation passed
-              } else {
-                  dbSelected = false;
-              }
+            $("#db_status").html(data.message)
+                .css({
+                    "color": data.valid ? "green" : "red",
+                    "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
+                    "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
+                });
 
-              checkIfReadyToSubmit();
-          })
-          .catch(err => {
-              $("#db_status")
-                  .html("Error validating DB: " + err)
-                  .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
-          });
+            setTimeout(() => $("#db_status").fadeOut("slow", function () {
+                $(this).html("").removeAttr("style").css("display", "none");
+            }), 7000);
+
+            dbSelected = !!data.valid;
+            checkIfReadyToSubmit();
+        })
+        .catch(err => {
+            $("#db_status")
+                .html("Error validating DB: " + err.message)
+                .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
+        });
+
     });
+
 
 
     // Confirm before submit

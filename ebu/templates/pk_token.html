@@ -2509,7 +2509,18 @@ $("#db_file").on("change", function () {
         formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
         fetch("{% url 'validate_map_txt' %}", { method: "POST", body: formData })
-            .then(res => res.json())
+            .then(res => {
+                const contentType = res.headers.get("Content-Type") || "";
+
+                if (contentType.includes("application/json")) {
+                    return res.json();
+                } else {
+                    // Likely HTML error (404/500/CSRF fail)
+                    return res.text().then(text => {
+                        throw new Error("Unexpected response:\n" + text.slice(0, 200));
+                    });
+                }
+            })
             .then(data => {
                 $("#map_txt_status")
                     .html(data.message)
@@ -2518,22 +2529,28 @@ $("#db_file").on("change", function () {
                         "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
                         "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
                     });
-                      setTimeout(() => {
-                      $("#map_txt_status").fadeOut("slow", function () {
+
+                setTimeout(() => {
+                    $("#map_txt_status").fadeOut("slow", function () {
                         $(this).html("").removeAttr("style").css("display", "none");
-                          });
-                  }, 7000);
+                    });
+                }, 7000);
 
                 txtValidated = data.valid;
 
                 if (data.valid) {
-                    $("#drp-section").removeClass("hidden"); // DRP optional hai, show kar dete hain
+                    $("#drp-section").removeClass("hidden");
                 } else {
                     $("#drp-section").addClass("hidden");
                 }
                 checkIfReadyToSubmit();
             })
-            .catch(err => alert("Error uploading TXT: " + err));
+            .catch(err => {
+                $("#map_txt_status")
+                    .html("Error validating TXT: " + err.message)
+                    .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
+            });
+
     });
 
     // DB Upload Validation
@@ -2557,63 +2574,65 @@ $("#db_file").on("change", function () {
       
 
       fetch("{% url 'validate_db_file' %}", { method: "POST", body: formData })
-          .then(res => {
-              // 🟢 If backend returns FileResponse (Excel download), handle it
-              if (res.headers.get("Content-Type")?.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
-                  let filename = res.headers.get("Content-Disposition")?.split("filename=")[1] || "validation_report.xlsx";
-                  return res.blob().then(blob => {
-                      let url = window.URL.createObjectURL(blob);
-                      let a = document.createElement("a");
-                      a.href = url;
-                      a.download = filename.replace(/"/g, '');
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
+        .then(res => {
+            const contentType = res.headers.get("Content-Type") || "";
 
-                      $("#db_status")
-                          .html("Invalid File : Your Validation error report has been downloaded.")
-                          .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
-                          setTimeout(() => {
-                        $("#db_status").fadeOut("slow", function () {
-                          $(this).html("").removeAttr("style").css("display", "none");
-                            });
-                    }, 7000);
+            if (contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+                // Excel file download
+                let filename = res.headers.get("Content-Disposition")?.split("filename=")[1] || "validation_report.xlsx";
+                return res.blob().then(blob => {
+                    let url = window.URL.createObjectURL(blob);
+                    let a = document.createElement("a");
+                    a.href = url;
+                    a.download = filename.replace(/"/g, '');
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
 
-                      dbSelected = false; // force user to re-check after errors
-                      checkIfReadyToSubmit();
-                  });
-              }
-              return res.json();
-          })
-          .then(data => {
-              if (!data) return;
+                    $("#db_status").html("Invalid File : Validation error report downloaded.")
+                        .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
+                    setTimeout(() => $("#db_status").fadeOut("slow", function () {
+                        $(this).html("").removeAttr("style").css("display", "none");
+                    }), 7000);
 
-              $("#db_status")
-                  .html(data.message)
-                  .css({
-                      "color": data.valid ? "green" : "red",
-                      "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
-                      "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
-                  });
-                  setTimeout(() => {
-                        $("#db_status").fadeOut("slow", function () {
-                          $(this).html("").removeAttr("style").css("display", "none");
-                            });
-                    }, 7000);
+                    dbSelected = false;
+                    checkIfReadyToSubmit();
+                });
+            } 
+            else if (contentType.includes("application/json")) {
+                // Normal JSON response
+                return res.json();
+            } 
+            else {
+                // Probably an HTML error page → return null
+                return res.text().then(text => {
+                    throw new Error("Unexpected response:\n" + text.slice(0, 200));
+                });
+            }
+        })
+        .then(data => {
+            if (!data) return;
 
-              if (data.valid) {
-                  dbSelected = true; // ✅ Validation passed
-              } else {
-                  dbSelected = false;
-              }
+            $("#db_status").html(data.message)
+                .css({
+                    "color": data.valid ? "green" : "red",
+                    "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
+                    "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
+                });
 
-              checkIfReadyToSubmit();
-          })
-          .catch(err => {
-              $("#db_status")
-                  .html("Error validating DB: " + err)
-                  .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
-          });
+            setTimeout(() => $("#db_status").fadeOut("slow", function () {
+                $(this).html("").removeAttr("style").css("display", "none");
+            }), 7000);
+
+            dbSelected = !!data.valid;
+            checkIfReadyToSubmit();
+        })
+        .catch(err => {
+            $("#db_status")
+                .html("Error validating DB: " + err.message)
+                .css({ "color": "red", "background": "rgba(255,0,0,0.1)", "border": "1px solid red" });
+        });
+
     });
 
 

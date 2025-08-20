@@ -185,6 +185,13 @@ def validate_link_excel(request):
         file = request.FILES["link_excel"]
         admcode_from_form = request.POST.get("admcode", "").strip()
 
+        # --- Extension validation ---
+        if not file.name.lower().endswith(".xlsx"):
+            return JsonResponse({
+                "valid": False,
+                "message": "❌ Invalid file type. Please upload an Excel file with .xlsx extension only."
+            })
+
         if not admcode_from_form:
             return JsonResponse({
                 "valid": False,
@@ -433,6 +440,13 @@ def validate_db_file(request):
         file = request.FILES["db_file"]
         admCode = request.POST.get("admcode")
         
+        # --- Extension validation ---
+        if not file.name.lower().endswith(".accdb"):
+            return JsonResponse({
+                "valid": False,
+                "message": "❌ Invalid file type. Please upload an Database file with .accdbZ extension only."
+            })
+                 
         if not admCode:
             return JsonResponse({
                  "valid": False,

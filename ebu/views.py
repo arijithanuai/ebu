@@ -58,7 +58,7 @@ def decode_token(token):
 def location_selector(request):
     # ---------------- Token Handling ----------------
     token = request.GET.get('token', None)
-    print(token)
+    print(decode_token(token))
     if not token:
         return HttpResponseForbidden("Direct access is not allowed")
 
@@ -66,10 +66,14 @@ def location_selector(request):
     token_data = decode_token(token)
     if not token_data:
         return HttpResponseForbidden("Invalid token")
-
+    
+# {'adminCode': '09-52-00', 'userRole': 'province_lg', 'userName': 'Prabin', 'userphone': '+628596741230', 'userEmail': 'prabin@gmail.com'}
     admin_code = token_data.get('adminCode')  # e.g. "IDN-52-00"
     user_role = token_data.get('userRole')    # "province_lg" / "kabupaten_lg"
-
+    lg_user_name = token_data.get('userName')
+    lg_email = token_data.get('userEmail')
+    lg_ph_no = token_data.get('userphone')
+                              
     # Split adminCode → extract province + kabupaten codes
     parts = admin_code.split("-")
     pCode = parts[1]  # province code, e.g. "52"
@@ -171,13 +175,16 @@ def location_selector(request):
             messages.success(request, f"✅ DB file uploaded successfully: {db_file.name}")
 
         return redirect('done')
-
+    print(f"-----------{lg_user_name}, {lg_email}, {lg_ph_no}")
     # ---------------- GET request → Render form ----------------
     return render(request, 'pk.html', {
         'provinces': provinces,
         "preselect_status": status,
         "preselect_province": preselect_province,
         "preselect_kabupaten": preselect_kabupaten,
+        "lg_user_name" : lg_user_name,
+        "lg_email" : lg_email,
+        "lg_ph_no" :lg_ph_no,
     })
 
 
@@ -201,6 +208,13 @@ def validate_link_excel(request):
     if request.method == "POST" and request.FILES.get("link_excel"):
         file = request.FILES["link_excel"]
         admcode_from_form = request.POST.get("admcode", "").strip()
+        
+        # --- Extension validation ---
+        if not file.name.lower().endswith(".xlsx"):
+            return JsonResponse({
+                "valid": False,
+                "message": "❌ Invalid file type. Please upload an Excel file with .xlsx extension only."
+            })
 
         if not admcode_from_form:
             return JsonResponse({
@@ -450,6 +464,13 @@ def validate_db_file(request):
         file = request.FILES["db_file"]
         admCode = request.POST.get("admcode")
         
+        # --- Extension validation ---
+        if not file.name.lower().endswith(".accdb"):
+            return JsonResponse({
+                "valid": False,
+                "message": "❌ Invalid file type. Please upload an Database file with .accdbZ extension only."
+            })
+            
         if not admCode:
             return JsonResponse({
                  "valid": False,
