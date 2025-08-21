@@ -463,14 +463,7 @@ def validate_db_file(request):
     if request.method == "POST" and request.FILES.get("db_file"):
         file = request.FILES["db_file"]
         admCode = request.POST.get("admcode")
-        
-        # --- Extension validation ---
-        if not file.name.lower().endswith(".accdb"):
-            return JsonResponse({
-                "valid": False,
-                "message": "❌ Invalid file type. Please upload an Database file with .accdbZ extension only."
-            })
-            
+             
         if not admCode:
             return JsonResponse({
                  "valid": False,

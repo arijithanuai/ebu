@@ -2636,8 +2636,8 @@ function validateEmail() {
 }
 
 function validatePhone() {
-    if (!/^\d{11,14}$/.test(phoneField.value.trim())) {
-        phoneError.textContent = "Enter phone number between 11 and 14 digits";
+    if (!/^\d{10,14}$/.test(phoneField.value.trim())) {
+        phoneError.textContent = "Enter phone number between 10 and 14 digits";
         return false;
     }
     phoneError.textContent = "";
