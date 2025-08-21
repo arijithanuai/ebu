@@ -179,7 +179,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 import base64
 
-@csrf_exempt
+
 def validate_link_excel(request):
     if request.method == "POST" and request.FILES.get("link_excel"):
         file = request.FILES["link_excel"]
@@ -332,7 +332,7 @@ def validate_link_excel(request):
 
     return JsonResponse({"valid": False, "message": " No file uploaded"})
 
-@csrf_exempt
+
 def validate_map_txt(request):
     if request.method == "POST" and request.FILES.get("map_txt"):
         file = request.FILES["map_txt"]
@@ -433,7 +433,7 @@ def download_template_excel(request):
 
 
 
-@csrf_exempt
+
 def validate_db_file(request):
     
     if request.method == "POST" and request.FILES.get("db_file"):

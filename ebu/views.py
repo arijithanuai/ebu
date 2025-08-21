@@ -203,19 +203,11 @@ from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 import base64
 
-@csrf_exempt
 def validate_link_excel(request):
     if request.method == "POST" and request.FILES.get("link_excel"):
         file = request.FILES["link_excel"]
         admcode_from_form = request.POST.get("admcode", "").strip()
         
-        # --- Extension validation ---
-        if not file.name.lower().endswith(".xlsx"):
-            return JsonResponse({
-                "valid": False,
-                "message": "❌ Invalid file type. Please upload an Excel file with .xlsx extension only."
-            })
-
         if not admcode_from_form:
             return JsonResponse({
                 "valid": False,
@@ -223,8 +215,10 @@ def validate_link_excel(request):
             })
 
         try:
+            print('try')
             df = pd.read_excel(file)
         except Exception as e:
+            print('except')
             return JsonResponse({"valid": False, "message": f" Invalid Excel file: {e}"})
 
         required_cols = [
@@ -356,7 +350,6 @@ def validate_link_excel(request):
 
     return JsonResponse({"valid": False, "message": " No file uploaded"})
 
-@csrf_exempt
 def validate_map_txt(request):
     if request.method == "POST" and request.FILES.get("map_txt"):
         file = request.FILES["map_txt"]
@@ -457,7 +450,7 @@ def download_template_excel(request):
 
 
 
-@csrf_exempt
+
 def validate_db_file(request):
     
     if request.method == "POST" and request.FILES.get("db_file"):

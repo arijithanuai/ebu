@@ -358,7 +358,7 @@
     <!-- Form Start -->
     <div>
       <form method="post" enctype="multipart/form-data" id="myForm">
-        {% csrf_token %}
+
         
         <input type="hidden" name="admcode" id="admcode" />
 
@@ -620,7 +620,7 @@ $("#db_file").on("change", function () {
 
         let formData = new FormData();
         formData.append("link_excel", fileInput.files[0]);
-        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+        //  formData.aappend("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
         formData.append("admcode", $('input[name="admcode"]').val());
 
         fetch("{% url 'validate_link_excel' %}", { method: "POST", body: formData })
@@ -694,7 +694,7 @@ $("#db_file").on("change", function () {
 
         let formData = new FormData();
         formData.append("map_txt", fileInput.files[0]);
-        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+        //  formData.aappend("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
         fetch("{% url 'validate_map_txt' %}", { method: "POST", body: formData })
             .then(res => res.json())
@@ -740,7 +740,7 @@ $("#db_file").on("change", function () {
       let formData = new FormData();
       formData.append("db_file", fileInput.files[0]);
       formData.append("admcode", $('input[name="admcode"]').val());
-      formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+      //  formData.aappend("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
       
 
@@ -1262,7 +1262,7 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
     <!-- Form Start -->
     <div>
       <form method="post" enctype="multipart/form-data" id="myForm">
-        {% csrf_token %}
+        
         
         <input type="hidden" name="admcode" id="admcode" />
 
@@ -1528,7 +1528,7 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
 
         let formData = new FormData();
         formData.append("link_excel", fileInput.files[0]);
-        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+        //  formData.aappend("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
         formData.append("admcode", $('input[name="admcode"]').val());
 
         fetch("{% url 'validate_link_excel' %}", { method: "POST", body: formData })
@@ -1602,7 +1602,7 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
 
         let formData = new FormData();
         formData.append("map_txt", fileInput.files[0]);
-        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+        //  formData.aappend("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
         fetch("{% url 'validate_map_txt' %}", { method: "POST", body: formData })
             .then(res => res.json())
@@ -1648,7 +1648,7 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
       let formData = new FormData();
       formData.append("db_file", fileInput.files[0]);
       formData.append("admcode", $('input[name="admcode"]').val());
-      formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+      //  formData.aappend("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
       
 
@@ -2170,7 +2170,7 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
     <!-- Form Start -->
     <div>
       <form method="post" enctype="multipart/form-data" id="myForm">
-        {% csrf_token %}
+        
         
         <input type="hidden" name="admcode" id="admcode" />
 
@@ -2432,7 +2432,7 @@ $("#db_file").on("change", function () {
 
         let formData = new FormData();
         formData.append("link_excel", fileInput.files[0]);
-        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+     //   //  formData.aappend("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
         formData.append("admcode", $('input[name="admcode"]').val());
 
         fetch("{% url 'validate_link_excel' %}", { method: "POST", body: formData })
@@ -2506,7 +2506,7 @@ $("#db_file").on("change", function () {
 
         let formData = new FormData();
         formData.append("map_txt", fileInput.files[0]);
-        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+        //  formData.aappend("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
         fetch("{% url 'validate_map_txt' %}", { method: "POST", body: formData })
             .then(res => {
@@ -2569,7 +2569,7 @@ $("#db_file").on("change", function () {
       let formData = new FormData();
       formData.append("db_file", fileInput.files[0]);
       formData.append("admcode", $('input[name="admcode"]').val());
-      formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+      //  formData.aappend("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
 
       
 
