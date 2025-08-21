@@ -452,7 +452,7 @@ def download_template_excel(request):
         output,
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = 'attachment; filename="excel_template.xlsx"'
+    response['Content-Disposition'] = 'attachment; filename="link_excel_template.xlsx"'
     return response
 
 

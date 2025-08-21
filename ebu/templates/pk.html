@@ -2416,7 +2416,79 @@ document.getElementById("myForm").addEventListener("submit", function(e) {
     $("#link_excel").on("change", function () {
         $("#upload_link_btn").show();
     });
+    
+    // Excel Upload Validation
+    $("#upload_link_btn").on("click", function () {
+        let fileInput = $("#link_excel")[0];
+        if (!fileInput.files.length) {
+            alert("Please select a file first");
+            return;
+        }
 
+        $("#link_excel_msg")
+            .show()
+            .html("Processing...")
+            .css({ "color": "orange", "background": "rgba(255,165,0,0.1)", "border": "1px solid orange" });
+
+        let formData = new FormData();
+        formData.append("link_excel", fileInput.files[0]);
+        formData.append("csrfmiddlewaretoken", $("[name=csrfmiddlewaretoken]").val());
+        formData.append("admcode", $('input[name="admcode"]').val());
+
+        fetch("{% url 'validate_link_excel' %}", { method: "POST", body: formData })
+            .then(res => res.json())
+            .then(data => {
+                // Reset download buttons
+                $("#download_error_excel").hide();
+               // $("#download_template_excel").hide();
+
+                $("#link_excel_msg")
+                    .html(data.message)
+                    .css({
+                        "color": data.valid ? "green" : "red",
+                        "background": data.valid ? "rgba(4,161,109,0.1)" : "rgba(255,0,0,0.1)",
+                        "border": `1px solid ${data.valid ? "#04a16d" : "red"}`
+                    });
+                    setTimeout(() => {
+                      $("#link_excel_msg").fadeOut("slow", function () {
+                        $(this).html("").removeAttr("style").css("display", "none");
+                          });
+                  }, 7000);
+
+                excelValidated = data.valid;
+
+                if (data.valid) {
+                    $("#map-section").removeClass("hidden");
+                    $("#map_txt").prop("disabled", false);
+                } else {
+                    $("#map-section").addClass("hidden");
+                    $("#map_txt").prop("disabled", true);
+                    txtValidated = false;
+
+                    // If row-level errors exist
+                    if (data.error_excel_url) {
+                        $("#download_error_excel")
+                            .show()
+                            .off("click")
+                            .on("click", function () {
+                                window.location.href = data.error_excel_url;
+                            });
+                    }
+
+                    // If schema error exists
+                    //if (data.template_excel_url) {
+                      //  $("#download_template_excel")
+                        //    .show()
+                      //      .off("click")
+                         //   .on("click", function () {
+                       //         window.location.href = data.template_excel_url;
+                       //     });
+                   // }
+                }
+                checkIfReadyToSubmit();
+            })
+            .catch(err => alert(`Error uploading file: ${err.message || err}`));
+    });
      // TXT Upload Validation
     $("#upload_map_txt").on("click", function () {
         let fileInput = $("#map_txt")[0];

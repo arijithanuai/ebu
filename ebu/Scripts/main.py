@@ -88,23 +88,23 @@ def runValidationScript(db_path , admCode):
             "message": f"❌ Validation failed: adm_code '{admCode}'  Admin Code must match with the inputed Db_File"
         }
 
-    id_columns = ["Province_Code", "Kabupaten_Code", "Link_No", "Link_Code"]
+    # id_columns = ["Province_Code", "Kabupaten_Code", "Link_No", "Link_Code"]
 
-    # Collect all invalid dataframes
-    all_dfs = [
-        invalid_df_link, invalid_df_alignment, invalid_df_road_condition,
-        invalid_df_road_inventory, invalid_df_bridge_inventory, invalid_df_culvert_condition,
-        invalid_df_culvert_inventory, invalid_df_retaining_wall_condition,
-        invalid_df_retaining_wall_inventory, invalid_df_traffic_volume,
-        invalid_df_unit_costs, invalid_df_unit_costs_unpaved, invalid_df_unit_costs_reh,
-        invalid_df_unit_costs_rigid, invalid_df_unit_costs_rm, invalid_df_unit_costs_widening
-    ]
+    # # Collect all invalid dataframes
+    # all_dfs = [
+    #     invalid_df_link, invalid_df_alignment, invalid_df_road_condition,
+    #     invalid_df_road_inventory, invalid_df_bridge_inventory, invalid_df_culvert_condition,
+    #     invalid_df_culvert_inventory, invalid_df_retaining_wall_condition,
+    #     invalid_df_retaining_wall_inventory, invalid_df_traffic_volume,
+    #     invalid_df_unit_costs, invalid_df_unit_costs_unpaved, invalid_df_unit_costs_reh,
+    #     invalid_df_unit_costs_rigid, invalid_df_unit_costs_rm, invalid_df_unit_costs_widening
+    # ]
 
-    # Force all code/id fields to string
-    for df in all_dfs:
-        for col in id_columns:
-            if col in df.columns:
-                df[col] = df[col].astype(str)
+    # # Force all code/id fields to string
+    # for df in all_dfs:
+    #     for col in id_columns:
+    #         if col in df.columns:
+    #             df[col] = df[col].astype(str)
 
     
     from all_table_validations.validate_link import required_columns as link_required, validate_row as validate_link_row
