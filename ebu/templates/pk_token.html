@@ -2711,13 +2711,21 @@ function validateEmail() {
 }
 
 function validatePhone() {
-    if (!/^\d{10,14}$/.test(phoneField.value.trim())) {
-        phoneError.textContent = "Enter phone number between 10 and 14 digits";
+    // Regex allows:
+    // - Optional "+" at start
+    // - Digits, spaces, or dashes
+    // - Total digits between 10 and 14
+    const rawValue = phoneField.value.trim();
+    const digitsOnly = rawValue.replace(/\D/g, ""); // strip everything except digits
+
+    if (!/^\+?\d[\d\s-]*$/.test(rawValue) || digitsOnly.length < 10 || digitsOnly.length > 14) {
+        phoneError.textContent = "Enter a valid phone number (10–14 digits, may include +, spaces, or -)";
         return false;
     }
     phoneError.textContent = "";
     return true;
 }
+
 
 nameField.addEventListener("input", validateName);
 emailField.addEventListener("input", validateEmail);
