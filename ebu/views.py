@@ -101,18 +101,19 @@ def location_selector(request):
     # ---------------- Handle POST (form submit) ----------------
     if request.method == 'POST':
         admcode = request.POST.get('admcode')
-        lgName = request.POST.get('lgName')
-        emailId = request.POST.get('emailId')
-        phoneNumber = request.POST.get('phoneNumber')
+        lgName = request.POST.get('lgName') or lg_user_name
+        emailId = request.POST.get('emailId') or lg_email
+        phoneNumber = request.POST.get('phoneNumber') or lg_ph_no
 
-        # Save user info
-        user_obj = User.objects.create(
+        # Use update_or_create to avoid duplicates
+        user_obj, created = User.objects.update_or_create(
             admcode=admcode,
-            lgName=lgName,
-            emailId=emailId,
-            phoneNumber=phoneNumber
+            defaults={
+                "lgName": lgName,
+                "emailId": emailId,
+                "phoneNumber": phoneNumber
+            }
         )
-
         # ----- Save Excel Data -----
         excel_linkcodes = set()
         file_content = request.session.get('validated_file')
@@ -171,6 +172,8 @@ def location_selector(request):
         # ----- Save DB File -----
         if request.FILES.get("db_file"):
             db_file = request.FILES["db_file"]
+            
+            print("user and email",lg_user_name,lg_email)
             DBfile.objects.create(admCode=admcode, fileUrl=db_file)
             messages.success(request, f"✅ DB file uploaded successfully: {db_file.name}")
 
@@ -456,7 +459,9 @@ def validate_db_file(request):
     if request.method == "POST" and request.FILES.get("db_file"):
         file = request.FILES["db_file"]
         admCode = request.POST.get("admcode")
-             
+        
+        
+    
         if not admCode:
             return JsonResponse({
                  "valid": False,
